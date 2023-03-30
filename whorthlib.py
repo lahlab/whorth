@@ -120,7 +120,7 @@ def whrp_basic(env):
 	d('Aproximatly equal.')
 	D('=',   'x x > b', 'a=st.pop()\nst[-1]=st[-1]==a')
 	d('Equal.')
-	D('!=',  'x x > b', 'a=st.pop()\nst[q-1]=st[-1]!=a')
+	D('!=',  'x x > b', 'a=st.pop()\nst[-1]=st[-1]!=a')
 	d('Not equal')
 
 	D('>=',  'x x > b', 'a=st.pop()\nst[-1]=st[-1]>=a')
@@ -293,23 +293,23 @@ D#"Fetch token from pst element on stack."#
 py: psttok! (tok pst >) p=st.pop(); p.tok = st.pop() ;
 D#"Store token to pst element on stack."#
 py: pstl@ (pst > l) st.append(st.pop().lst) ;
-D#"Fetch context list from pst element on stack."#
+D#"Fetch list from pst element on stack."#
 py: pstfnc@ (pst > fnc) st.append(st.pop().efnc) ;
 D#"Fetch end func from pst element on stack."#
 py: pstfnc! (fnc pst >) p=st.pop(); p.efnc = st.pop() ;
 D#"Store end func to pst element on stack."#
 
-#" Shortcut for pst top item. <0psttok@ ???"#
-: psttok0>  (> tok)  <0pst psttok@ ;
-D#"Fetch token from top pst element. <0psttok! ???"#
-: >0psttok  (tok >)  <0pst psttok! ;
+#" Shortcut for pst top item."#
+: psttok0>  (> tok)  pst0> psttok@ ;
+D#"Fetch token from top pst element."#
+: >0psttok  (tok >)  pst0> psttok! ;
 D#"Store token to top pst element."#
-: pstl0>   (> l)    <0pst pstl@ ;
-D#"Fetch context list top from pst element."#
-: pstfnc0> (> fnc)  <0pst pstfnc@ ;
-D#"Fetch end func top from pst element."#
-: >0pstfnc (fnc >)  <0pst pstfnc! ;
-D#"Store end func top to pst element."#
+: pstl0>   (> l)    pst0> pstl@ ;
+D#"Fetch list from top pst element."#
+: pstfnc0> (> fnc)  pst0> pstfnc@ ;
+D#"Fetch end func from top pst element."#
+: >0pstfnc (fnc >)  pst0> pstfnc! ;
+D#"Store end func to top pst element."#
 """
 
 whrp_interp = r"""
