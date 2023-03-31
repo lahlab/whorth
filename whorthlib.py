@@ -326,20 +326,21 @@ py: c_mp! (i >) env.c_mp = st.pop() ;
 D#"Stor i as memory position of word curently being compiled."#
 
 #" Look up word information "#
-: ' (> s) word w@ ; D#"Get next word as string."#
+: s' (> s) word w@ ; D#"Get next word as string."#
 py: look (s > idx) st.append(env.dic[st.pop()]) ;
  D#"Look up index of word named by s."#
-: look' (> idx) ' look ;   D#"look up index of following word."#
+: ' (> idx) s' look ;   D#"look up index (exec token) of following word."#
 
 py: func@ (idx > i) st.append(env.dicl[st.pop()]) ;
  D#"Fetch function from word idx."#
-: func' (> fnc) look' func@ ; D#"look up func for following word."#
+: f' (> fnc) ' func@ ; D#"look up func for following word."#
 py: meta@ (idx > m) st.append(env.dicd[st.pop()]) ;
  D#"Fetch meta info from word idx."#
+: m' (> m) ' meta@ ; D#"Look upp meta info for following word."#
 
 #" Call whorth words "#
 py: call_s (s >) env.call(st.pop()) ;           D#"Call word named by s."#
-py: call_idx (idx i >) env.call_idx(st.pop()) ; D#"Call word with idx."#
+py: call (idx i >) env.call_idx(st.pop()) ; D#"Call word with idx."#
 py: call_fnc (i >) env.call_fnc(st.pop()) ;     D#"Call function."#
 
 py> interp (>) whr.Whorth.interp
@@ -352,34 +353,34 @@ whrp_mem = r"""
 imp' pycomp
 
 py: mem@ (i > x) st.append(env.w_mem) ; D#"Push memory as list onto stack."#
-py: m@ (i > x) a=st.pop(); assert(a>=0); st.append(env.w_mem[a]) ;
- D#"Fetch value from memory pos i."#
-py: m! (x i >) a=st.pop(); assert(a>=0); env.w_mem[a]=st.pop() ;
- D#"Store x in memory by index i."#
+py: @ (adr > x) a=st.pop(); assert(a>=0); st.append(env.w_mem[a]) ;
+ D#"Fetch value from memory pos adr."#
+py: ! (x adr >) a=st.pop(); assert(a>=0); env.w_mem[a]=st.pop() ;
+ D#"Store x in memory by pos adr."#
 py: mlen (> i) st.append(len(env.w_mem)) ;  D#"get length of memory."#
 
-##"Not much use treating all mem as circular buffer but alow indexing
+<<<#"Not much use treating all mem as circular buffer but alow indexing
 from end of mem by negative indexes."##
-py: m@c (i > x) st.append(env.w_mem[st.pop() % len(env.w_mem)]) ;
+py: @c (i > x) st.append(env.w_mem[st.pop() % len(env.w_mem)]) ;
  D#"Fetch value from memory by circular index i."#
-py: m!c (x i >) a=st.pop(); env.w_mem[a % len(env.w_mem)]=st.pop() ;
+py: !c (x i >) a=st.pop(); env.w_mem[a % len(env.w_mem)]=st.pop() ;
  D#"Store x in memory by circular index i."#
 
 
 #" Questnable word much asuming mem being a list like in pyWhorth "#
 py: m0> (> x) st.append(env.w_mem[-1]) ;
- D#"Copy value from end of memory. Depricated?"#
+ D#"Copy value from end of memory. Depricated?"#>>>
 """
 
 whrp_str = r"""
 #" String words "#
 imp' interp      imp' mem
 
+<<<#"
 : word' (> s) word w@ ; D#"Scan next word from input and return as str."#
 : >word' (> s) lit> lit> >here word' >here ; IM
 D#"Scan next word from input and compile it as a literal string."#
 
-<<<#"
 py> '""' (> s) _str IM
 D##'String literal. Compile literal if compiling else return the str. Need
 as usal space round word like: "" this is a str ""'##
@@ -404,7 +405,7 @@ whrp_meta = r"""
 #" Meta info "#
 imp' str      imp' interp
 
-: meta' (>) look' meta@ ;   D#"Get meta info for following word."#
+##" : meta' (>) ' meta@ ;   D#"Get meta info for following word."##
 
 py: m_w@ (m > s) st.append(st.pop().w) ;
  D#"Get word name from meta info."#
@@ -546,7 +547,7 @@ And Yhea, You exit by entering 'q' on an empty line - but who wanna quit?
    dup m_doc@ if{m_doc@ NL + . }el{drop}then ;
 D#"Print help for word with index idx."#
 
-: help' look' helpidx ;    D#"Print help for following word."#
+: help' ' helpidx ;    D#"Print help for following word."#
 """
 # is
 whrp_stack = r"""
@@ -693,9 +694,9 @@ py: Dict (> l) st.append({}) ;
 : dic' const' Dict >here ;
 
 py: dic@ (d s > e) e = st[-2][st.pop()]; st[-1] = e ;
-: dic@' (d > e) ' dic@ ;
+: dic@' (d > e) s' dic@ ;
 py: dic! (d e k > d) k=st.pop(); e=st.pop(); st[-1][k]=e ;
-: dic!' (d e > d) ' dic! ;
+: dic!' (d e > d) s' dic! ;
 py: keys@ (d > l) st[-1] = list(st[-1].keys()) ;
 """
 
@@ -724,7 +725,7 @@ py: scans (s >) env.scan(st.pop()) ;
 py: find (s > i) st[0]=env.find(st[0]) ;
 
 #"sfunc (s > i) slook func@"#
-: func' (> i) look' func@ ;
+#": func' (> i) ' func@ ;"#
 #"smeta (s > m) slook meta@"#
 : mklit> (x >) lit> lit> >here >here ; IM
 """
@@ -742,7 +743,7 @@ py: !?jmp (i >) env.r[-1] += 1 if st.pop() else env.w_mem[env.r[-1]+1] ;
 D##"Conditional jump - add value after instruction to the xp (execution
 pointer) if i is false, else add 1 to xp (step over the jump addr)."##
 
-: jmp! (frmadr toadr >) over - swap m! ;
+: jmp! (frmadr toadr >) over - swap ! ;
 D##" Calculate the relative addr and store it in frmadr so a jmp
 instruction directly before frmadr will jump to toadr."##
 : jmphere (frmadr >) here jmp! ;
