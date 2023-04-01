@@ -204,8 +204,8 @@ py: mkword (> a) env._addic(env.w, len(env.w_mem))
 env.dicd[-1] = whr.Wmeta(env.w, len(env.w_mem)) ;
    D#"Make an empty word from name in wordbuf"#
 
-: comp' (>) word compword ; IM     D#"Compile next word"#
-: IM' (>) word callword ; IM       D#"Call next word imidiatly"#
+: IM<' (>) f' >here ; IM       D#"Compile next word regardles of IM"#
+: IM>' (>) word callword ; IM  D#"Call next word imidiatly"#
 """
 # #S: #py: #D: #:
 whrp_var = r"""
@@ -216,11 +216,11 @@ py: _var (> a) st.append(env.r[-1]+1); env.r[-1] = 0 ; D#"Implement var>"#
 py: _const (> a) st.append(env.w_mem[env.r[-1]+1]); env.r[-1] = 0 ;
 D#"Implement const>"#
 
-: var' word mkword comp' _var ;
+: var' word mkword IM<' _var ;
 D##"Make a named variabel, a word returning its address when called for
 storing values. Do not reserve space - se allot and >here for ways to
 reserv and set memory."##
-: const' word mkword comp' _const ;
+: const' word mkword IM<' _const ;
 D##"Make a named constant, a word returning its folowing value when called.
 Do not set a value - se >here for way to set memory."##
 
@@ -489,12 +489,12 @@ learn more. "py:" and "py>" is for defining new words in python - check help
 there to! "help'" also show the source for the words so You can figure it
 out. Here is an simplified example of a Forth word (.") defined in Whorth:
 
-            : .' (>) word w@ . ;
+            : .' (>) s' . ;
 
 ":" is the compiler, ".'" is the word being defined, "(>)" is the stack
-signature, "word" fetch the next word from input to wordbuffer (the string),
-"w@" (word fetch) fetch the wordbuffer to the stack, "." print it and ";"
-end the compile and store the new word to the dictonary. How do .' become ."?
+signature, "s'" fetch the next word from input to wordbuffer (the string)
+and put it on the stack, "." print it and ";" end the compile and store
+the new word to the dictonary. How do .' become ."?
 
 Welcome back to the prompt and use an empty line to continue...">>
 "help5" look func@ mty! . ;
@@ -751,10 +751,17 @@ D#"Store rel adr to here in frmadr (assuming a jmp instr befor that)."#
 : jmpthere (toadr >) here swap  0 >here  jmp! ;
 D#"Store rel adr to toadr in here (assuming a jmp instr befor that)."#
 
-py: ?CALL (i >) env.r[-1] += not st.pop() ;
-D#"Conditional call - Call next word if i is true, else step over it."#
-py: !?CALL (i >) env.r[-1] += bool(st.pop()) ;
-D#"Conditional call - Call next word if i is false, else step over it."#
+py: ?CALL (flag >) env.r[-1] += not st.pop() ;
+D#"Conditional call - Call next word if flag is true, else step over it."#
+py: !?CALL (flag >) env.r[-1] += bool(st.pop()) ;
+D#"Conditional call - Call next word if flag is false, else step over it."#
+
+py: ?LCALL (flag >) env.r[-1] += (not st.pop()) << 1 ;
+D#"Conditional literal call - Call folloving literal if flag is true, else
+step over the literal."#
+py: !?LCALL (flag >) env.r[-1] += bool(st.pop()) << 1 ;
+D#"Conditional literal call - Call following literal if flag is false, else
+step over the literal."#
 
 py: RET (>) env.r[-1] = 0 ;   D#"Return from word."#
 py: ?RET (b >) if st.pop(): env.r[-1] = 0 ; D#"Return from word if b is true."#
@@ -768,9 +775,9 @@ You need special words to do recursion."##
 imp' jmp
 
 : RECUR (>) c_mp@ >here ; IM   D#"Recursion, Call the word being defined."#
-: ?RECUR (b >) lit> ?CALL >here comp' RECUR ; IM
+: ?RECUR (b >) lit> ?LCALL >here IM<' RECUR ; IM
 D#"Conditional recursion, Call the word being defined if b is true."#
-: !?RECUR (b >) lit> !?CALL >here comp' RECUR ; IM
+: !?RECUR (b >) lit> !?LCALL >here IM<' RECUR ; IM
 D#"Conditional recursion, Call the word being defined if b is false."#
 
 : TRECUR (>) lit> jmp >here c_mp@ mlen - >here ; IM
@@ -1061,81 +1068,26 @@ def whrp_silly(env):
 	D('nstr', 'i > s', 'st[-1] = nstr(st[-1])')
 	D('strn', 's > i', 'st[-1] = strn(st[-1])')
 
-def whrp_stack_extra(env):
-	"""Add stack and memory ops to WHORTH env. Names will change!"""
-	D = env.pydef
-	D('mnpush', '* i >',
-		'n=st.pop()\nenv.w_mem.extend(st[min(-1,-n):]);st[min(-1,-n):]=()')
-	D('mnpop',  'i > *',
-		'n=st.pop()\nst.extend(env.w_mem[min(-1,-n):]);env.w_mem[min(-1,-n):]=()')
-	D('mnpushcp', '* i >',
-		'n=st.pop()\nenv.w_mem.extend(st[min(-1,-n):])')
-	D('mnpopcp',  'i > *',
-		'n=st.pop()\nst.extend(env.w_mem[min(-1,-n):])')
-	D('npush', '* i >',
-		'n=st.pop()\nenv.sst.extend(st[min(-1,-n):]);st[min(-1,-n):]=()')
-	D('npop',  'i > *',
-		'n=st.pop()\nst.extend(env.sst[min(-1,-n):]);env.sst[min(-1,-n):]=()')
-	D('npushcp', '* i >',
-		'n=st.pop()\nenv.sst.extend(st[min(-1,-n):])')
-	D('npopcp',  'i > *',
-		'n=st.pop()\nst.extend(env.sst[min(-1,-n):])')
-
-
-#def _literal(env, st):
-#	env.x_p = env.x_p + 1
-#	st.append(env.w_mem[env.x_p])
 def _compw(env, w):
 	env.w_mem.append(env.dicl[env.dic[w]])
 
 def _wstartcomp(env, flag=0):
 	txt = env.ip - len(env.w)
-	#print('_wstartcomp1', env.w)
-	#print(env.mk_err())
 	env.word()
-	#print('_wstartcomp2', env.w)
-	#print(env.mk_err())
 	env.c_w = env.w
 	env.c_flag = flag # | __IW
 	env.c_txt = env.ib[txt:env.ip]
 	env.scip()
-	#print('scip\n{}'.format(env.mk_err()))
 	if env.ib[env.ip] != '(':
-		
 		env.c_sig = ''
 	else:
 		env.word()
 		sp = env.ip
-		#env.pst[-1].ctx = 'SIG'
-		while (env.w != ')'): #or (env.pst[-1].ctx != 'SIG'):
+		l = len(env.pst)
+		while (env.w != ')') or (len(env.pst) > l):
 			env.word()
-		#print('while word\n{}'.format(env.mk_err()))
 		env.c_sig = env.ib[sp:env.ip-1].strip()
-		#print('__wstartcomp', txt, len(env.w), env.w)
-		#print('ib:', env.ib[txt:env.ip])
-		#sp = env.ip
-		#env.ip = env.find(')')
-		#if env.ip > sp:
-		#	env.c_sig = env.ib[sp:env.ip-1].strip()
-		#	#print('__wcompile sig:', c_sig)
-		#	env.ip = env.ip + 1
-		#else:
-		#	env.err.append("compile error - no end to signature.\n" +
-		#		env.mk_err())
-		#	raise SyntaxError("compile error - no end to signature.")
 	env.c_txt = env.ib[txt:env.ip]
-	#print('_wstartcomp3', env.c_txt)
-	#if env.w:
-	#	env.c_w = env.w
-	#	env.c_flag = flag # | __IW
-	#	env.c_txt = env.ib[txt:env.ip]
-	#	#print('c_txt:', env.c_txt)
-	#	env.w = ''
-	#	return
-	#else:
-	#	env.err.append("compile error - no word name given.\n" +
-	#		env.mk_err())
-	#	raise SyntaxError("compile error - no word name given.")
 
 def _pycolon(env, st):
 	"""Compile a python word. It ends with ';'"""
@@ -1156,8 +1108,6 @@ def _pycolon(env, st):
 				raise SyntaxError("no python code in word {}".format(c_w))
 			env.pydef(c_w, env.c_sig, txt, env.c_flag)
 			env.c_w = ''
-			#env.c_txt = ''
-			#env.c_flag = 0
 			return
 		etxt = len(env.c_txt)
 		env.word()
@@ -1174,26 +1124,17 @@ def _scolon(env, st):
 		env._addic(c_w, env.c_mp)
 		env.dicd[-1] = whr.Wmeta(
 			c_w, env.c_mp, flag=env.c_flag, sig=env.c_sig, wsrc=env.c_txt)
-		#print(';', repr(c_w), repr(env.c_w))
 
 def _colon(env, st):
 	"""Compile a Whorth word. Ends with ';'"""
-	#env.po = ': ';
 	_wstartcomp(env);
 	env.c_mp = len(env.w_mem);
-	#compl(env, st);
-	#env.po = ''
-	#if env.c_w:
-	#	env.err.append("Input end compiling word {}\n{}".format(c_w,
-	#		env.mk_err()))
-	#	raise SyntaxError("Input end compiling word {}".format(c_w)) ;
 
 def _py_gt(env, st):
 	"""Tie a word to a python function."""
 	env.po = 'py> ';
 	_wstartcomp(env);
 	env.word()
-	#print('py>', env.c_w, env.w)
 	try:
 		env.pydef(env.c_w, env.c_sig, eval(env.w, env.glob))
 	except:
@@ -1209,12 +1150,10 @@ def _py_gt(env, st):
 			env.mk_err()))
 		raise
 	env.po = ''
-	#env.c_txt = ''; env.c_flag = 0; env.po = ''""") 'finalize'
 
 def _py_doc(env, st):
 	"""Copy doc from a pyton func __doc__ to latest word."""
 	env.po = 'pyd> ';
-	#_wstartcomp(env);
 	env.word()
 	try:
 		env.addoc(eval(env.w))
@@ -1222,95 +1161,14 @@ def _py_doc(env, st):
 		env.err.append("Error addoc {}\n{}".format(env.w,
 			env.mk_err()))
 		raise
-	#env.dicd[-1].doc = eval('getattr({}, "__doc__", "")'.format(env.w), env.glob)
 	env.po = ''
 
 def _wo_doc(env, st):
 	"""Copy doc from a whorth comment to latest word."""
 	env.word()
-	#print("_wo_doc", env.w)
 	if env.w:
 		d = env.dicd[-1].doc
 		env.dicd[-1].doc = d + '\n\n' + env.w if d else env.w
-			
-
-def _com(env, st=None, doc=None):
-	"""Scan a whorth comment. Ends with ';'"""
-	po = env.po
-	env.po = '#: '
-	c_w = env.c_w; env.c_w = 'str'
-	if not c_w:
-		env.c_txt = ''
-	sp = len(env.c_txt) + 1
-	env.word()
-	while env.w or (env.pst and (env.pst[-1].es[0] in '\'"')):
-		if env.w == ';':
-			if doc:
-				env.addoc(env.c_txt[sp:-2], doc)
-			env.c_w = c_w
-			env.po = po
-			return
-		env.word()
-	#print(env.pst)
-	env.err.append("Input end while scanning comment\n{}".format(env.mk_err()))
-	env.c_w = c_w
-	env.po = po
-	#print(env.ip, len(env.ib), '\n', env.ib)
-	raise SyntaxError("Input end while scanning comment")
-
-def _str(env, st, end='""', comp=True):
-	"""A whorth string of sort."""
-	po = env.po
-	env.po = end + ': '
-	c_w = env.c_w; env.c_w = 'str'
-	if not c_w:
-		env.c_txt = ''
-	sp = len(env.c_txt) + 1
-	env.word()
-	while env.w:
-		if env.w == end:
-			st.append(env.c_txt[sp:-len(end)-1])
-			if c_w and comp:
-				env.w_mem.append(env.dicl[env.dic['lit>']])
-				env.w_mem.append(st.pop())
-			env.c_w = c_w
-			env.po = po
-			return
-		env.word()
-	env.err.append("Input end while scanning string\n{}".format(env.mk_err()))
-	env.c_w = c_w
-	env.po = po
-	raise SyntaxError("Input end while scanning string")
-
-def _kill_compl(env, st):
-	"""Compiling inner interpreter."""
-	mem = env.w_mem
-	dic = env.dic
-	dl = env.dicl
-	dd = env.dicd
-	lit = dl[dic['lit>']]
-	#call = dic['_call_x_p']
-	env.word()
-	#print(env.w)
-	while env.w: # or (env.pst and (env.pst[-1].es[0] == '"')):
-		n = dic.get(env.w, None)
-		if n is not None:
-			#print('compile word:', env.w, n, dw)
-			func = dl[n]
-			if dd[n].flag & whr.Wmeta.IM:
-				env.call_fnc(func)
-				if not env.c_w:
-					break
-			else:
-				mem.append(func)
-		elif env.literal(env.w):
-			mem.append(lit)
-			mem.append(st.pop())
-		else:
-			env.e("compl: Not word or literal: {}".format(repr(env.w)))
-			env.e(env.mk_err())
-			raise SyntaxError('compl: Not word or literal')
-		env.word()
 
 def nstr(n):
 	"""Convert int to gobly str."""
