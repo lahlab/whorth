@@ -1,16 +1,16 @@
 # WHORTH - the ugly duckling of forth
-# Open sorceish - licence still to be chosen
-# Terapy project so far only usefull for play - but feel free to play!
+# Open sourceish - licence still to be chosen
+# Therapy project so far only usefull for play - but feel free to play!
 # (c) Lars Hallberg, WIP-FL: lah2180@gmail.com
 
 """WHORTH: Canon pedia aka std lib.
 
 This is first incomplete draft of a cannon pedia defining basic
 words for Whorth. It is not in any form stable in ether api or
-implementation! Largly completly untested an in exprimental form.
+implementation! Largely completely untested an in experimental form.
 
-Uses Pythons ductyping in part because it almost inpossble not to
-in Python and in part because it neet. Goal is to keeep part of
+Uses Pythons duck-typing in part because it almost imposable not to
+in Python and in part because it neat. Goal is to keep part of
 duck typing going forward - No, Whorth is not and will not be a
 standard FORTH - it will remain an ugly duckling.
 """
@@ -29,7 +29,7 @@ import math
 import random as rnd
 
 def whrp_pycomp(env):
-	"""Pyton 'asm' compile words and some compile suport."""
+	"""Python 'asm' compile words and some compile support."""
 	D = env.pydef
 	d = env.addoc
 	D('py:',  '>',  _pycolon);   d(_pycolon)
@@ -37,7 +37,7 @@ def whrp_pycomp(env):
 	D('pyd>', '>',  _py_doc);    d(_py_doc)
 	D("D#'",  '>',  _wo_doc);    d(_wo_doc)
 	D('pystacktrace', '>', 'st.append(env.err_pyst)')
-	d('Get python stacktrace of latest error as a string')
+	d('Get python stack trace of latest error as a string')
 
 def whrp_basic(env):
 	"""Basic whorth words."""
@@ -117,7 +117,7 @@ def whrp_basic(env):
 
 	# Comparison and logic.
 	D('~=',  'f f > b', 'a=st.pop()\nst[-1]=math.isclose(st[-1],a)')
-	d('Aproximatly equal.')
+	d('Approximately equal.')
 	D('=',   'x x > b', 'a=st.pop()\nst[-1]=st[-1]==a')
 	d('Equal.')
 	D('!=',  'x x > b', 'a=st.pop()\nst[-1]=st[-1]!=a')
@@ -165,92 +165,131 @@ def whrp_basic(env):
 		'print(" ".join(whr.whr_rs(x) for x in env.w_mem))')
 	D('sh.', 'x x >', 'm=st.pop()\nprint(whr.shdots(st.pop(),m))')
 
-#wod_comp = #D: D""""Whorth intepreter and compiler words."""
+#wod_comp = #D: D""""Whorth interpreter and compiler words."""
 whrp_comp = r"""
 #" compiler words "#
 imp' pycomp     imp' input
 
 #" Whorth compiler "#
 py> IM (>) whr.Whorth.setIM
-D#"Mark prev word as Imidiate, so it is called also during compile."#
-py> ; (>) _scolon IM    D#"End compile and store word to wordlist."#
+D#"Mark prev word as immediate, so it is called also during compile."#
+py> ; (>) _scolon IM    D#"End compile and store word to word list."#
 py> : (>) _colon
-D<<<#"Start compile of word. folowing word is name of word being defined. That
-is folowed by optional signature in ( ) ... This is an exeption - space is
-not neded inad the parranteses. Folowing words are compiled to memory
-forming a list that is executed in order later when the word is run. Numbers
-are stored as literalls and pop on the stack when the word excecute.
+D<<<#"Start compile of word. following word is name of word being defined. That
+is followed by optional signature in ( ) ... space is not needed inside the
+parentheses. Following words are compiled to memory forming a list that is
+executed in order later when the word is run. Numbers are stored as
+literals and pop on the stack when the word execute.
 
-Immidiate IM words are run during compile, Ex 'IF' 'compile>' 'call>' '""'
+Immediate (IM) words are run during compile, Ex 'IF' 'compile>' 'call>' '""'
 
-';' is the word ending the compile. The new word is not added untill then
+';' is the word ending the compile. The new word is not added until then
 so there is special IM words to do recursive calls in lib.recur"#>>>
 
 #" Here - compile position. "#
 py: here (> adr) st.append(len(env.w_mem)) ;
 D#"Current compile position in memory."#
 py: >here  (x >) env.w_mem.append(st.pop()) ;
-D#"push to curent compile position as a stack."#
+D#"push to current compile position as a stack."#
 py: here>  (> x) st.append(env.w_mem.pop()) ;
-D#"pop from curent compile position as a stack."#
+D#"pop from current compile position as a stack."#
 
-#" Nil - Whorts None "#
-py: Nil (> nil) st.append(None) ; D#"Put Nil (Whorts None) on stack."#
+#" Nil - Whorths None "#
+py: Nil (> nil) st.append(None) ; D#"Put Nil (Whorths None) on stack."#
 py: isNil (x > b) st.append(st.pop() is None) ; D#"Test if Nil."#
 
 py: callword (>) env.call(enw.w) ;      D#"Call word in wordbuf"#
+###"
 py: compword (>) _compw(env, env.w) ;   D#"Compile word in wordbuf"#
+"###
 py: mkword (> a) env._addic(env.w, len(env.w_mem))
 env.dicd[-1] = whr.Wmeta(env.w, len(env.w_mem)) ;
    D#"Make an empty word from name in wordbuf"#
 
-: IM<' (>) f' >here ; IM       D#"Compile next word regardles of IM"#
-: IM>' (>) word callword ; IM  D#"Call next word imidiatly"#
+py: w@ (> s) st.append(env.w) ;        D#"Fetch current word as str."#
+py: w! (s >) env.w = st.pop() ;        D#"Store string as current word."#
+py: c_w@ (> s) st.append(env.c_w) ;    D#"Fetch name of word being compiled."#
+py: c_w! (s >) env.c_w = st.pop() ;    D#"Store str to current compile name."#
+py: c_mp@ (> i) st.append(env.c_mp) ;
+D#"Fetch memory position of word currently being compiled."#
+py: c_mp! (i >) env.c_mp = st.pop() ;
+D#"Store i as memory position of word currently being compiled."#
+
+#" Look up word information "#
+py: look (s > idx) st.append(env.dic[st.pop()]) ;
+ D#"Look up index of word named by s."#
+py: func@ (idx > i) st.append(env.dicl[st.pop()]) ;
+ D#"Fetch function from word idx."#
+py: meta@ (idx > m) st.append(env.dicd[st.pop()]) ;
+ D#"Fetch meta info from word idx."#
+
+: s' (> s) word w@ ; D#"(s-tick) Get next word as string."#
+: ' (> idx) s' look ;
+D#"(tick) Look up index (exec token) of following word."#
+: f' (> fnc) ' func@ ; D#"(f-tick) look up func for following word."#
+: m' (> m) ' meta@ ; D#"(m-tick) Look upp meta info for following word."#
+
+: >IM!  (idx >)  func@ >here ;  D#"Compile word by idx."#
+: >IM!! (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
+D#"Make word being compiled compile word by idx."#
+: IM!'  (>)  ' >IM!  ;  IM  D#"Compile next word regardless of IM"#
+: IM!!' (>)  ' >IM!! ;  IM
+#" : IM!!' (>) lit> lit> >here   f' >here   lit> >here >here ; IM "#
+D#"Make the word being compiled compile next word regardless of IM"#
+: IM>' (>) word callword ; IM  D#"Call next word immediately"#
+#" More IM* words in lib.intrp "#
 """
 # #S: #py: #D: #:
-whrp_var = r"""
-#" Basic variables "#
+whrp_box = r"""
+#" boxes and constants "#
 imp' comp
 
-py: _var (> a) st.append(env.r[-1]+1); env.r[-1] = 0 ; D#"Implement var>"#
+py: _box (> a) st.append(env.r[-1]+1); env.r[-1] = 0 ; D#"Implement box'"#
 py: _const (> a) st.append(env.w_mem[env.r[-1]+1]); env.r[-1] = 0 ;
-D#"Implement const>"#
+D#"Implement const'"#
 
-: var' word mkword IM<' _var ;
-D##"Make a named variabel, a word returning its address when called for
-storing values. Do not reserve space - se allot and >here for ways to
-reserv and set memory."##
-: const' word mkword IM<' _const ;
-D##"Make a named constant, a word returning its folowing value when called.
-Do not set a value - se >here for way to set memory."##
+: box' (>) word mkword IM!!' _box ;
+D##"Make a named storage place, a word returning its address when called
+for storing values. Do not reserve space - se allot and >here for ways to
+reserve and set memory. Or >box' for reserving and initiation."##
+
+: >box' (x >) box' >here ; 
+D##"Make a named storage place, a word returning its address when called
+for storing values. Initiate to the value on the stack reserving space
+for that value."##
+
+: const' (c >) word mkword IM!!' _const >here ;
+D##"Make a named constant, a word returning its value when called. Set
+it's value from the top value on stack."##
 
 py: allot (i >) env.w_mem.extend([0] * st.pop()) ;
-D#"Allots (reserve) i cells of memory. see var>"#
+D#"Allots (reserve) i cells of memory. see box'"#
 
 <###"
 py: var> (> a) env.word(); env._addic(env.w, len(env.w_mem))
-env.dicd[-1] = whr.Wmeta(env.w, len(env.w_mem)); _compw(env, '_var') ;
+env.dicd[-1] = whr.Wmeta(env.w, len(env.w_mem)); _compw(env, '_box') ;
 py: var@> (> a) env.word(); env._addic(env.w, len(env.w_mem))
-env.dicd[-1] = whr.Wmeta(env.w, len(env.w_mem)); _compw(env, '_var') ;
+env.dicd[-1] = whr.Wmeta(env.w, len(env.w_mem)); _compw(env, '_box') ;
 "###>
 """
 
 whrp_input = r"""
-#" Input envirionment "#
+#" Input environment "#
 imp"pycomp"
 
-#" Word scaner "#
+#" Word scanner "#
 py: scip (>) env.scip() ;
-D#"Scip to next word. If 'inp' is set may trigger a read to the input buffer."#
+D#"Skip to next word. If 'inp' is set may trigger a read to the input buffer."#
 py: scan (>) env.scan() ; D#"Scan to end of word, newer past input buffer"#
 py: word (>) env.word() ;
 D##"Parse next word from input to wordbuf. If 'inp' is set may trigger a
-read to the input buffer."##
+read to the input buffer (actually done by scip)."##
 
-#" Manuall input "#
+#" Manual input "#
 py> input (prmpt > inp) whr.Whorth.input
 
-py: prompt@ (> i i) st.append(env.pn); st.append(env.pnn) ;
+py: prompt@ (> i1 i0) st.append(env.pn); st.append(env.pnn) ;
+D##"Fetch interactive prompt settings."##
 py: prompt! (i i >) env.pnn=st.pop(); env.pn=st.pop() ;
 
 #" input buffer "#
@@ -259,12 +298,12 @@ py: ip! (s >) env.ip = st.pop() ;        D#"Store to input pointer."#
 py: ib@ (> s) st.append(env.ib) ;        D#"Fetch input buffer."#
 py: ib! (s >) env.ib = st.pop() ;        D#"Store to input buffer."#
 
-py: w_in@ (> f) st.append(env.w_in) ; #"Fetch callbak - se w_in! for more."#
+py: w_in@ (> f) st.append(env.w_in) ; #"Fetch callback - see w_in! for more."#
 py: w_in! (f >) env.w_in = st.pop() ;
 ##"Store a callback that is called by word (scip actually) when the input
 buffer run empty. Should refill the buffer."##
 
-py: mty@ (> f) st.append(env.i_mty) ; #"Fetch callbak - se mty! for more."#
+py: mty@ (> f) st.append(env.i_mty) ; #"Fetch callback - se mty! for more."#
 py: mty! (f >) env.i_mty = st.pop() ;
 ##"Store mty (empty) callback - should be func or Nil. The mty callback is
 called on input of empty buffer. Make it possible to set response to empty
@@ -279,7 +318,7 @@ py: pstlen (> i) st.append(len(env.pst)) ; D#"Get len (depth) of parse stack."#
 py: pst@ (idx > pst) i=st.pop(); assert(i>=0); st.append(env.pst[i]) ;
 D#"Fetch n:th pst (parse stack) element indexed from bottom."#
 py: pst@c (n > pst) st.append(env.pst[st.pop() % len(env.pst)]) ;
-D#"Fetch n:th pst (parse stack) element circulary indexed from bottom."#
+D#"Fetch n:th pst (parse stack) element circularly indexed from bottom."#
 py: pst0> (> pst) st.append(env.pst[-1]) ;
 D#"Get copy of top pst element new side stack style"#
 py: pst@> (n > pst) i=st.pop(); assert(i>=0); st.append(env.pst[-1-i]) ;
@@ -313,35 +352,18 @@ D#"Store end func to top pst element."#
 """
 
 whrp_interp = r"""
-imp' comp
+imp' comp      imp' meta      imp' if
 
 #" interpreter / compiler envirionment. "#
-py: w@ (> s) st.append(env.w) ;        D#"Fetch curent word as str."#
-py: w! (s >) env.w = st.pop() ;        D#"Store string as curent word."#
-py: c_w@ (> s) st.append(env.c_w) ;    D#"Fetch name of word being compiled."#
-py: c_w! (s >) env.c_w = st.pop() ;    D#"Store str to current compilename."#
-py: c_mp@ (> i) st.append(env.c_mp) ;
-D#"Fetch memory position of word curently being compiled."#
-py: c_mp! (i >) env.c_mp = st.pop() ;
-D#"Stor i as memory position of word curently being compiled."#
+py: cmpl? (> flag) st.append(env.compiling()) ;
+D#"True if we are currently compiling."#
 
-#" Look up word information "#
-: s' (> s) word w@ ; D#"Get next word as string."#
-py: look (s > idx) st.append(env.dic[st.pop()]) ;
- D#"Look up index of word named by s."#
-: ' (> idx) s' look ;   D#"look up index (exec token) of following word."#
-
-py: func@ (idx > i) st.append(env.dicl[st.pop()]) ;
- D#"Fetch function from word idx."#
-: f' (> fnc) ' func@ ; D#"look up func for following word."#
-py: meta@ (idx > m) st.append(env.dicd[st.pop()]) ;
- D#"Fetch meta info from word idx."#
-: m' (> m) ' meta@ ; D#"Look upp meta info for following word."#
+: IM?!' (>)  ' dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then ;
 
 #" Call whorth words "#
-py: call_s (s >) env.call(st.pop()) ;           D#"Call word named by s."#
-py: call (idx i >) env.call_idx(st.pop()) ; D#"Call word with idx."#
-py: call_fnc (i >) env.call_fnc(st.pop()) ;     D#"Call function."#
+py: call_s (s >) env.call(st.pop()) ;          D#"Call word named by s."#
+py: call (idx i >) env.call_idx(st.pop()) ;    D#"Call word with idx."#
+py: call_fnc (fnc >) env.call_fnc(st.pop()) ;  D#"Call function."#
 
 py> interp (>) whr.Whorth.interp
 #"py> compl (>) compl"#
@@ -367,13 +389,13 @@ py: !c (x i >) a=st.pop(); env.w_mem[a % len(env.w_mem)]=st.pop() ;
  D#"Store x in memory by circular index i."#
 
 
-#" Questnable word much asuming mem being a list like in pyWhorth "#
+#" Questionable word much assuming mem being a list like in pyWhorth "#
 py: m0> (> x) st.append(env.w_mem[-1]) ;
- D#"Copy value from end of memory. Depricated?"#>>>
+ D#"Copy value from end of memory. Deprecated?"#>>>
 """
 
 whrp_str = r"""
-#" String words "#
+#" String words - mostly superseded by str/train parsing."#
 imp' interp      imp' mem
 
 <<<#"
@@ -383,13 +405,13 @@ D#"Scan next word from input and compile it as a literal string."#
 
 py> '""' (> s) _str IM
 D##'String literal. Compile literal if compiling else return the str. Need
-as usal space round word like: "" this is a str ""'##
+as usual space round word like: "" this is a str ""'##
 py: ' (> s) _str(env, st, "'") ; IM
 D##"String literal. Compile literal if compiling else return the str.
 Need as usal space round word like: ' this is a str '"##
 
-py> /"" (> s) _str                D#'Non imidiate string literal. se ""'#
-py: /' (> s) _str(env, st, "'") ; D#"Non imidiate string literal. se '"#
+py> /"" (> s) _str                D#'Non immediate string literal. se ""'#
+py: /' (> s) _str(env, st, "'") ; D#"Non immediate string literal. se '"#
 py: st"" (> s) _str(env, st, '""', false) ; IM
 D#'Stack str, return str even when compiling. se ""'#
 py: st' (> s) _str(env, st, "'", false) ; IM
@@ -403,7 +425,7 @@ py: NL (> s) st.append('\n') ;  D#"Return a string with a new line."#
 
 whrp_meta = r"""
 #" Meta info "#
-imp' str      imp' interp
+imp' comp
 
 ##" : meta' (>) ' meta@ ;   D#"Get meta info for following word."##
 
@@ -414,13 +436,13 @@ py: m_idx@ (m > idx) st.append(st.pop().idx) ;
 py: m_sig@ (m > s) st.append(st.pop().sig) ;
  D#"Get word signature from meta info."#
 py: m_doc@ (m > s) st.append(st.pop().doc) ;
- D#"Get meta infos doc string."#
+ D#"Get meta info's doc string."#
 py: m_doc! (s m >) d = st.pop(); st.pop().doc = d ;
- D#"Store string as meta infos doc string."#
+ D#"Store string as meta info's doc string."#
 py: m_flag@ (m > flag) st.append(st.pop().flag) ;
  D#"Get flags from meta info."#
 : m_IM@ (m > IMflag) m_flag@ 1 and ;
- D#"Get flags from meta info and select the imidiate bit."#
+ D#"Get flags from meta info and select the immediate bit."#
 py: m_wsrc@ (m > s) st.append(st.pop().wsrc) ;
  D#"Get Whorth source from meta info (if defined with :)."#
 py: m_pybdy@ (m > s) st.append(st.pop().pybdy) ;
@@ -428,7 +450,7 @@ py: m_pybdy@ (m > s) st.append(st.pop().pybdy) ;
 py: m_pyfn@ (m > s) st.append(st.pop().pyfn) ;
  D#"Get the python function from meta info."#
 py: m_pyname@ (m > s) st.append(getattr(st.pop().pyfn, '__name__', '')) ;
- D#"Get python funcname from meta info (if defined with py>)."#
+ D#"Get python func name from meta info (if defined with py>)."#
 """
 
 whrp_help = r"""
@@ -436,7 +458,7 @@ whrp_help = r"""
 imp' meta      imp' str      imp' if
 
 : help (>) <<"
-Whorth is a ugly duckling of Forth. It use ducktyping and don't adher to
+Whorth is a ugly duckling of Forth. It use duck typing and don't adhere to
 standard Forth in a fair bit of ways. It use postfix notation like Forth
 so You write (spaces are important):
 
@@ -445,38 +467,37 @@ so You write (spaces are important):
 
 Values is taken and stored on a stack. That is also how Valus goes in and
 out of words (think functions). The top of the stack is shown in the
-prompt and You can nondestructively print the whole stack with the word
-'s.' or destructivly print the top value with '.' (dot).
+prompt and You can non-destructively print the whole stack with the word
+'s.' or destructively print the top value with '.' (dot).
 
-Experement a litle and then press enter on an empty line to continue...">>
-"help2" look func@ mty! . ;      D#"Print generall help info."#
+Experiment a little and then press enter on an empty line to continue...">>
+"help2" look func@ mty! . ;      D#"Print general help info."#
 
 : help2 (>) <<"
-Spaces are important in Forth, they seperate words and need to go between
+Spaces are important in Forth, they separate words and need to go between
 everything. That make the parser dead simple and easy to extend. Whorth add
-wordbreaking on the inside of "" strings and paranteses and check that they
-are ballanced. That make more 'normal' literals possible and it is made
-in a way that is at least equally easy to extend. Look at 'lib.str',
-'lib.listlit' and 'lib.if' for some examples howe parsing work.
+word breaking on the inside of "" strings and parentheses (train parsing)
+and check that they are balanced. That make more 'normal' literals
+possible and it is made in a way that is at least equally easy to extend.
 
-Speaking of if... Whorth if is different from Forth in that it uses curlys:
+Whorth's if is an example of a train using {}:
 
    flag if{do this if true}else{do this}then continue here in both cases
 
-If can only be used in compiled words see ':' further down. Whorths if also
-have a lot of speacial features - se help' if or help"if".
+If can only be used in compiled words see ':' further down. Whorth's if also
+have a lot of speacial features - se "help' if" or "lsi' lib.if".
 
 Welcome back to the prompt and use an empty line to continue...">>
 "help3" look func@ mty! . ;
 
 : help3 (>) <<"
 The words 'dup drop nip swap over rot' are the main means to manipulate the
-stack. push and pop (may be renamed) also move values to/from the sidestack
-witch make jugling values esier (standin for Forth return stack).
+stack. >sst and sst> also move values to/from the side stack
+witch make juggling values easier (stand in for Forth return stack).
 
 The word "lsw" list all loaded words, "help' word" print help for a word
 (including it's source). You can import words with "imp' path.to.pack" To
-look around You kan use "lsi' path" Standard words are in lib so "lsi' lib"
+look around You can use "lsi' path" Standard words are in lib so "lsi' lib"
 show the packages (already loaded packages is marked with *). "imp' lib.time"
 as an example import time words. "lsi' lib.time" print the source for it.
 
@@ -492,9 +513,9 @@ out. Here is an simplified example of a Forth word (.") defined in Whorth:
             : .' (>) s' . ;
 
 ":" is the compiler, ".'" is the word being defined, "(>)" is the stack
-signature, "s'" fetch the next word from input to wordbuffer (the string)
-and put it on the stack, "." print it and ";" end the compile and store
-the new word to the dictonary. How do .' become ."?
+signature, "s'" fetch the next word from input put it on the stack as a
+string, "." print it and ";" end the compile and store the new word to
+the dictionary. How do .' become ."? see next page.
 
 Welcome back to the prompt and use an empty line to continue...">>
 "help5" look func@ mty! . ;
@@ -504,17 +525,17 @@ Ex:   ."Hello World"   .' for_one_word   .<|"fancy"|>
 
 In Forth You would need a space after '."' but Whorth don't need that
 (making hello world one char shorter). Whorth turn "text" into string, and
-if thers a prefix (like ."str") the prefix is called with ' added. That's
-how we used .' to define ." above. The last fancy exampel uses decorators,
+if there is a prefix (like ."str") the prefix is called with ' added. That's
+how we used .' to define ." above. The last fancy example uses decorators,
 any string of "<>|*#" reversed on ether side of the string. That make it possible to quote anything. If You use at least one # the string will turn
-into a comment and disapere from the word stream unless it have a prefix.
+into a comment and disappear from the word stream unless it have a prefix.
 The prefix is then called with "#'" added. The prefix "D#'" is defined and
 add documentation to the latest word. Use it like below and the
 documentation will turn up when using help'.
 
    : .' (>)  word w@ . ; D#"Print a string but no compiling."#
 
-Yes, Forths ." also compiles so its usable in words. "hello" . works when
+Yes, Forth's ." also compiles so its usable in words. "hello" . works when
 compiling Whorth words so ." is not so needed and don't exist yet.
 
 Welcome back to the prompt and use an empty line to continue...">>
@@ -522,17 +543,17 @@ Welcome back to the prompt and use an empty line to continue...">>
 
 : help6 (>) <<"
 Whorth is far from complete and a moving target. It use python as its
-assambler but the long plan is to also suport wasm, js and possible more.
-Error messages are horroble and more for debugging Whorth then Whorth code
-(and not even good for that). It is a terapy project recovering from long
-ilness and progress will be slow and unsteaddy. To get a python stacktrace
+assembler but the long plan is to also support wasm, js and possible more.
+Error messages are horrible and more for debugging Whorth then Whorth code
+(and not even good for that). It is a therapy project recovering from long
+illness and progress will be slow and unsteady. To get a python stack trace
 of latest error use:
 
      pystacktrace .
 
 This is it for this help. You go back to the prompt and empty lines will
 do nothing. But You can call 'help' again. More help like this and with
-more functions are planed. I do belevie 'at the prompt' is the right
+more functions are planed. I do believe 'at the prompt' is the right
 place for documentation and tutorials. Have fun playing around!
 
 And Yhea, You exit by entering 'q' on an empty line - but who wanna quit?
@@ -551,7 +572,7 @@ D#"Print help for word with index idx."#
 """
 # is
 whrp_stack = r"""
-#" Stacks and acces "#
+#" Stacks and access "#
 
 imp' pycomp
 
@@ -559,31 +580,36 @@ py: st@ (> l) st.append(st) ;       D#"Fetch stack as list."#
 py: sst@ (> l) st.append(env.sst) ; D#"Fetch the side stack as list."#
 
 py: s@ (n > x) n=st.pop(); st.append(st[-n-1]) ;
-D##"Fetch the n:ts element from stack, indexed from top that is 0 - negative
-numbers index from the bottom. Index as if the argument don't exist."##
+D##"Fetch the n:ts element from stack, indexed from top that is 0. Index
+as if the argument don't exist."##
 py: s! (x n >) a=st.pop(); v=st.pop(); st[-a-1]=v ;
-D##"Store x to the n:ts element of the stack, indexed from top that is 0
-- negative numbers index from the bottom. Index as if the arguments don't
-exist."##
+D##"Store x to the n:ts element of the stack, indexed from top that is 0.
+Index as if the arguments don't exist."##
 <###"
 py: s>rem (n > x) a=st.pop(); st.append(st.pop(-a-1)) ;
 py: ins>s (x n >) a=st.pop(); v=st.pop(); st.insert(-a-1,v) ;
 "###>
-py: slen (> i) st.append(len(st)) ;       D#"Length of stack."#
-py: sslen (> i) st.append(len(env.sst)) ; D#"Length of side stack."#
+py: slen (> i) st.append(len(st)) ;       D#"Length (depth) of stack."#
+py: sslen (> i) st.append(len(env.sst)) ; D#"Length (depth) of side stack."#
 
 py: >sst (x >) env.sst.append(st.pop()) ; D#"Push value to side stack."#
-py: sst> (> x) st.append(env.sst.pop()) ;  D#"Pop value from the side stack."#
+py: sst> (> x) st.append(env.sst.pop()) ; D#"Pop value from the side stack."#
 py: >0sst (x >) env.sst[-1] = st.pop() ;
+D#"Stor value to (overwite) the top value of side stack."#
 py: >1sst (x >) env.sst[-2] = st.pop() ;
+D#"Stor value to (overwite) the first under value of side stack."#
 py: >2sst (x >) env.sst[-3] = st.pop() ;
+D#"Stor value to (overwite) the first under value of side stack."#
 py: >!sst (x i >) i=st.pop(); assert(i>=0); env.sst[-i-1] = st.pop() ;
-D#" Push value to side stack leaving a copy on the stack."#
+D#" Store value to side stack at stack position i."#
 py: sst0> (> x) st.append(env.sst[-1]) ;
+D#"Fetch top value from side stack."#
 py: sst1> (> x) st.append(env.sst[-2]) ;
+D#"Fetch first under value from side stack."#
 py: sst2> (> x) st.append(env.sst[-3]) ;
+D#"Fetch first under value from side stack."#
 py: sst@> (i > x) i=st.pop(); assert(i>=0); st.append(env.sst[-i-1]) ;
-D#" Pop value from the side stack leaving a copy on the side stack."#
+D#" Fetch value at pos i on the side stack."#
 
 #" Old notation "#
 ###"
@@ -609,53 +635,56 @@ py: ss!i (x n >) a=st.pop(); env.sst.insert(-a-1,st.pop()) ;
 """
 whrp_list = r"""
 #" Lists "#
-imp' comp      imp' var      imp' mem
+imp' comp      imp' box      imp' mem
 
+py: aList (l > l) assert(isinstance(st[-1], list)) ; D#"Assert List."#
+py: isList (l > flag) st[-1] = -isinstance(st[-1], list) ;
+D#"True (-1) if l is a List."#
 py: List (> l) st.append([]) ; D#"Create an empty list"#
 py: s/l (... n > l) n=st.pop(); l=st[-n:]; st[-n:]=(); st.append(l) ;
-D#"Slash off n values from the stack and readd them as a list."#
+D#"Slash off n values from the stack and re-add them as a list."#
 py: l/l (l n > l l) n=st.pop(); l=st[-1][-n:]; st[-1][-n:]=(); st.append(l) ;
 D#"Slash off n values from list as new list (split list, mod orig list)."#
-: list' const' List >here ;
+: List' (>) List const' ;      D#"Make an empty named list."#
+: >List' (l >) aList const' ;  D#"Turn l in to a named List."#
 
-#" New notation, exprimentiall: These are stack ops"#
+#" New notation, experimental: These are stack ops"#
 
 ##" Storing values to top (end) of list as a stack."##
 py: >l   (x l >)   l=st.pop(); l.append(st.pop()) ;
-D#"push x to top (end) of list as a stack. Keep list."#
+D#"push x to top (end) of list as a stack."#
 py: >0l  (x l >)   l=st.pop(); l[-1]=st.pop() ;
-D#"store x in top (end) of list as a stack. Keep list."#
+D#"store x in top (end) pos of list."#
 py: >1l  (x l >)   l=st.pop(); l[-2]=st.pop() ;
-D#"store x to 1:st under top (end) of list as a stack. Keep list."#
+D#"store x to 1:st under top (end) pos of list."#
 py: >2l  (x l >)   l=st.pop(); l[-3]=st.pop() ;
-D#"store x to 2:nd under top (end) of list as a stack. Keep list."#
-py: >!l  (x l n >) n=st.pop(); assert(n>=0); l=st.pop(); l[-n-1]=st.pop() ;
-D#"store x to n:th under top (end) of list as a stack. Keep list."#
+D#"store x to 2:nd under top (end) pos of list."#
+py: >!l  (x n l >) l=st.pop(); n=st.pop(); assert(n>=0); l[-n-1]=st.pop() ;
+D#"store x to n:th under top (end) pos of list."#
 
 #" These are list/mem only. index from start of list "#
-py: l!   (x l i >)  i=st.pop(); assert(i>=0); l=st.pop(); l[i]=st.pop() ;
-D#"store x to 0:rot index i in list. Keep list on stack."#
-py: l!c  (x l i >)  i=st.pop(); l=st.pop(); l[i%len(l)]=st.pop() ;
-D#"store x to 0:rot circular index i in list. Keep list on stack."#
+py: l!   (x i l >)  l=st.pop(); i=st.pop(); assert(i>=0); l[i]=st.pop() ;
+D#"store x to 0:rot index i in list."#
+py: l!c  (x i l >)  l=st.pop(); i=st.pop(); l[i%len(l)]=st.pop() ;
+D#"store x to 0:rot circular index i in list."#
 
-##" Extracting values from top (end) of list as a stack, As the source, the
-list is 'consumed'. "##
+#" Extracting values from top (end) of list as a stack."#
 py: l>   (l > x)    x=st[-1].pop(); st[-1] = x ;
-D#"Pop x off top (end) of list as a stack. Drop list."#
+D#"Pop x off top (end) of list as a stack."#
 py: l0>  (l > x)    x=st[-1][-1]; st[-1] = x ;
-D#"Fetch x from top (end) of list as a stack. Drop list."#
+D#"Fetch x from top (end) pos of list."#
 py: l1>  (l > x)    x=st[-1][-2]; st[-1] = x ;
-D#"Fetch x from 1:st under top (end) of list as a stack. Drop list."#
+D#"Fetch x from 1:st under top (end) pos of list."#
 py: l2>  (l > x)    x=st[-1][-3]; st[-1] = x ;
-D#"Fetch x from 2:nd under top (end) of list as a stack. Drop list."#
-py: l@>  (l n > x)  i=st.pop(); assert(i>=0); x=st[-1][-i-1]; st[-1] = x ;
-D#"Fetch x from n:th under top (end) of list as a stack. Drop list."#
+D#"Fetch x from 2:nd under top (end) pos of list."#
+py: l@>  (n l > x)  l=st.pop(); assert(st[-1]>=0); st[-1] = l[-st[-1]-1] ;
+D#"Fetch x from n:th under top (end) of list as a stack."#
 
 #" These are list/mem only. index from start of list "#
-py: l@   (l i > x)  i=st.pop(); assert(i>=0); st[-1]=st[-1][i] ;
-D#"Fetch x from 0:rot index i in list. Drop list."#
-py: l@c  (l i > x)  i=st.pop(); st[-1] = st[-1][i%len(st[-1])] ;
-D#"Fetch x from 0:rot circular index i in list. Drop list."#
+py: l@   (i l > x)  l=st.pop(); assert(st[-1]>=0); st[-1]=l[st[-1]] ;
+D#"Fetch x from 0:rot index i in list l."#
+py: l@c  (i l > x)  l=st.pop(); st[-1] = st[-1][st[-1]%len(l)] ;
+D#"Fetch x from 0:rot circular index i in list l."#
 
 #" Not a list specific function in a duck universe!!! "#
 py: len (l > i) st[-1] = len(st[-1]) ; D#"Get length of top stack item."#
@@ -677,8 +706,9 @@ whrp_listlit = r"""
 #" List literals "#
 imp' list      imp' if      imp' stack
 
-: "[" slen >sst ; D#"Start List literal."#
+: "[" slen >sst ; IM D#"Start List literal."#
 : "]" slen sst> - dup 0 > if{s/l}el{drop List}then ; D#"End List literal."#
+"# TODO! [ and ] need to be IM to work in words! #"
 <###"
 : py: <rem (l i > l x)   st[-1] = st[-2].pop(-st[-1]-1) ;
 : py: <ins (l x i > l)   st[-3].insert(-st.pop()-1, st.pop()) ;
@@ -690,14 +720,23 @@ whrp_dict = r"""
 #" Dictionaries "#
 imp' comp
 
-py: Dict (> l) st.append({}) ;
-: dic' const' Dict >here ;
+py: aDict (d > d) assert(isinstance(st[-1], dict)) ; D#"Assert Dict."#
+py: isDict (d > flag) st[-1] = -isinstance(st[-1], dict) ;
+D#"True (-1) if d is a Dict."#
+py: Dict (> d) st.append({}) ;
+: Dict' (>) Dict const' ;      D#" Create an empty named Dict."#
+: >Dict' (d >) aDict const' ;  D#" Make d an named Dict."#
 
-py: dic@ (d s > e) e = st[-2][st.pop()]; st[-1] = e ;
-: dic@' (d > e) s' dic@ ;
-py: dic! (d e k > d) k=st.pop(); e=st.pop(); st[-1][k]=e ;
-: dic!' (d e > d) s' dic! ;
+py: dic@ (s d > e) d = st.pop();  e = d[st.pop()];  st[-1] = e ;
+D#"Fetch value at key s from dictionary d"#
+: dic@' (d > e)  s' dic@ ;
+D#"Fetch value from dictionary taking key from following word."#
+py: dic! (e s d >) d = st.pop();  k = st.pop();  d[k] = st.pop() ;
+D#"Store e in dictionary d with key s."#
+: dic!' (e d >)  s' dic! ;
+D#"Store e in dictionary taking key from following word."#
 py: keys@ (d > l) st[-1] = list(st[-1].keys()) ;
+D#"Get keys of dictionary as list."#
 """
 
 # #: sslen (> i) st.append(len(env.w_mem)) ; ppy:
@@ -747,9 +786,9 @@ pointer) if i is false, else add 1 to xp (step over the jump addr)."##
 D##" Calculate the relative addr and store it in frmadr so a jmp
 instruction directly before frmadr will jump to toadr."##
 : jmphere (frmadr >) here jmp! ;
-D#"Store rel adr to here in frmadr (assuming a jmp instr befor that)."#
+D#"Store rel adr to here in frmadr (assuming a jmp instr before that)."#
 : jmpthere (toadr >) here swap  0 >here  jmp! ;
-D#"Store rel adr to toadr in here (assuming a jmp instr befor that)."#
+D#"Store rel adr to toadr in here (assuming a jmp instr before that)."#
 
 py: ?CALL (flag >) env.r[-1] += not st.pop() ;
 D#"Conditional call - Call next word if flag is true, else step over it."#
@@ -757,7 +796,7 @@ py: !?CALL (flag >) env.r[-1] += bool(st.pop()) ;
 D#"Conditional call - Call next word if flag is false, else step over it."#
 
 py: ?LCALL (flag >) env.r[-1] += (not st.pop()) << 1 ;
-D#"Conditional literal call - Call folloving literal if flag is true, else
+D#"Conditional literal call - Call following literal if flag is true, else
 step over the literal."#
 py: !?LCALL (flag >) env.r[-1] += bool(st.pop()) << 1 ;
 D#"Conditional literal call - Call following literal if flag is false, else
@@ -775,9 +814,11 @@ You need special words to do recursion."##
 imp' jmp
 
 : RECUR (>) c_mp@ >here ; IM   D#"Recursion, Call the word being defined."#
-: ?RECUR (b >) lit> ?LCALL >here IM<' RECUR ; IM
+: ?RECUR (b >) lit> ?LCALL >here IM!' RECUR ; IM
+: ?RECUR (b >) lit> ?LCALL >here IM!' RECUR ; IM
 D#"Conditional recursion, Call the word being defined if b is true."#
-: !?RECUR (b >) lit> !?LCALL >here IM<' RECUR ; IM
+: !?RECUR (b >) lit> !?LCALL >here IM!' RECUR ; IM
+: !?RECUR (b >) lit> !?LCALL >here IM!' RECUR ; IM
 D#"Conditional recursion, Call the word being defined if b is false."#
 
 : TRECUR (>) lit> jmp >here c_mp@ mlen - >here ; IM
@@ -803,32 +844,32 @@ D#"Consume list of addr and store relative addr to here in them."#
 
 : "if{" (b >) lit> !?jmp >here   List >sst   List >sst
               here sst0> >l   1 >here ; IM
-D##"Words impl 'if{ - }el{ - }then' statment. 'if{' and '}el{' (else) can be
-followed by '}if{' (and if) creating shortcuted test without nesting 'if{'.
-An '}if{' can be folowed by a '}br{' (break) turning it in to an abort with
-clenup before joining '}el{'. An '}if{' following an '}el{' is efectivly an
-elif. }fin{ (finalize) collect all previus 'succesfull' tests for a common
-exit code. The whole if statment is ended with '}then'.
+D##"Words impl 'if{ - }el{ - }then' statement. 'if{' and '}el{' (else) can be
+followed by '}if{' (and if) creating a shortcut test without nesting 'if{'.
+An '}if{' can be followed by a '}br{' (break) turning it in to an abort if
+with cleanup before joining '}el{'. An '}if{' following an '}el{' is
+effectively an elif. }fin{ (finalize) collect all previews 'successful'
+tests for a common exit code. The whole if statement is ended with '}then'.
 
 Implemented by storing state in two list on sst, the top one jump locations
 for }el{ and the second one jump locations for '}fin{'. '}br{' also use the
 top one. '}then' sets all remaining jump locations."##
 
 : "}el{" (>) lit> jmp >here   sst1> here>l   1 >here   sst0> ljmp! ; IM
-D#"Collect controll flow from faild 'if{ / }if{' and '}br{' (see 'if{')."#
+D#"Collect control flow from failed 'if{ / }if{' and '}br{' (see 'if{')."#
 
 : "}then" (>) sst> ljmp!    sst> ljmp! ; IM
-D#"Collect all remaining controllflow and end if statment (drop state)."#
+D#"Collect all remaining control flow and end if statement (drop state)."#
 
 : "}if{" (b >) lit> !?jmp >here   sst0> here>l   1 >here ; IM
 D##"Extra conditions on each 'if{' / '}el{' leg. Each 'if{' / '}el{' can
-have several '}if{' with or whithout '}br{'."##
+have several '}if{' with or without '}br{'."##
 
 : "}br{" (>) lit> jmp >here  sst0>  dup l> jmphere  here>l  1 >here ; IM
 D#"Turn an '}if{' into 'abort if' (see 'if{')."#
 
 : "}fin{" (>) lit> jmp >here   sst0> here>l   1 >here   sst1> ljmp! ; IM
-D##"'finalize': collect controll flow from succeding IF / ELSE AIF for
+D##"'finalize': collect control flow from succeeding if{ / }el{ }if{ for
 common exit code. "##
 """
 whrp_IF = r"""
@@ -836,24 +877,24 @@ whrp_IF = r"""
 imp' stack      imp' jmp
 
 : IF (b >) lit> !?jmp >here  here >sst  1 >here ; IM
-D#"Words impl forth style IF - ELSE - THEN statment."#
+D#"Words impl forth style IF - ELSE - THEN statement."#
 
 : ELSE (>) lit> jmp >here   here  1 >here  sst> jmphere  >sst ; IM
-D#"Words impl forth style IF - ELSE - THEN statment."#
+D#"Words impl forth style IF - ELSE - THEN statement."#
 
 : THEN (>) sst> jmphere ; IM
-D#"Words impl forth style IF - ELSE - THEN statment."#
+D#"Words impl forth style IF - ELSE - THEN statement."#
 
 #"Odd naming below to not interfer white atempt to do std forth stuff."#
 
 : ITER (>) 0 >sst   0 >sst   here >sst ; IM
-D##"ITER .. [flag WHL] .. [flag WHL] .. RPT .. [[ELSE] .. THEN] statment.
+D##"ITER .. [flag WHL] .. [flag WHL] .. RPT .. [[ELSE] .. THEN] statement.
 
 ITER (iterate) .. RPT (repeat) is an endless loop. Optional WHL (while)
 break the loop if flag is false. Optional second WHL do the same but
-jump to ELSE/THEN insted of to RPT. That way You can have different
-exit code depending on wich while breaking. If You have two WHL You
-MUST have a THEN and may have a ELSE. If You dont have two WHL You
+jump to ELSE/THEN instead of to RPT. That way You can have different
+exit code depending on witch while breaking. If You have two WHL You
+MUST have a THEN and may have a ELSE. If You don't have two WHL You
 MUST NOT have ELSE or THEN!"##
 
 : WHL (flag >) lit> !?jmp >here
@@ -865,13 +906,13 @@ second to ELSE or THEN."##
 : RPT (>) lit> jmp >here   sst> jmpthere
           sst> dup  IF  jmphere  ELSE  drop  THEN
           sst> dup  IF  >sst  ELSE  drop  THEN ; IM
-D##"Loop by jumping back to ITER. End an ITER statment unles it have two
+D##"Loop by jumping back to ITER. End an ITER statement unless it have two
 WHL in witch case, and only in that case, You need an THEN."##
 """
 # : qq ITER dup 10 < WHL dup 1+ dup 9 < WHL dup 3 + RPT 42 ELSE 666 THEN 9 ;
 
 def whrp_rand(env):
-	"""Add random functions to a WHORTH env. example of using pydef."""
+	"""Add random functions to a WHORTH env."""
 	D = env.pydef
 	d = env.addoc
 	# Random numbers
@@ -914,7 +955,7 @@ def whrp_rand(env):
 	d(rnd.seed)
 
 def whrp_math(env):
-	"""Add math functions to a WHORTH env. example of using pydef."""
+	"""Add math functions to a WHORTH env."""
 	D = env.pydef
 	d = env.addoc
 	# Math
@@ -1013,7 +1054,7 @@ def whrp_fuzlog(env):
 	D = env.pydef
 
 	# Fuzzy logic - handles unknown values somewhat.
-	# posetiv value is truthines, negative falsiness and 0 is unknown.
+	# positive value is truthiness, negative falseness and 0 is unknown.
 	D('fAND', 'x x>x', 'a=st.pop()\nst[-1]=min(st[-1],a)')
 	D('fOR',  'x x>x', 'a=st.pop()\nst[-1]=max(st[-1],a)')
 	D('fXOR', 'x x>x', 'a=st.pop()\nst[-1]=min(max(st[-1],a),-min(st[-1],a))')
@@ -1022,7 +1063,7 @@ def whrp_fuzlog(env):
 	D('fSAME','x x>x', 'a=st.pop()\nst[-1]=-min(max(st[-1],a),-min(st[-1],a))')
 	D('fNOT', 'x > x', 'st[-1]=-st[-1]')
 
-	# Treshold words to get truth flag out of a fuzzy logic value.
+	# Threshold words to get truth flag out of a fuzzy logic value.
 	D('2T',  'x > b',   'st[-1]=-(st[-1] >= 2)')
 	D('2F',  'x > b',   'st[-1]=-(st[-1] <= 2)')
 	D('2U',  'x > b',   'st[-1]=-(abs(st[-1]) < 2)')
@@ -1060,11 +1101,11 @@ py: pfclk    (> f)   st.append(tm.perf_counter()) ; pyd> tm.perf_counter
 def whrp_silly(env):
 	"""Some silly and testing stuff, probably broken a lot of the time."""
 	D = env.pydef;
-	# Word Zero... Raise exeption, it should not be called
+	# Word Zero... Raise exception, it should not be called
 	D('WordZero', '>', w_zero)
 	D('test', '>', _test)
 
-	# number to from str id. not actually used for something but usefull.
+	# number to from str id. not actually used for something but useful.
 	D('nstr', 'i > s', 'st[-1] = nstr(st[-1])')
 	D('strn', 's > i', 'st[-1] = strn(st[-1])')
 
@@ -1112,9 +1153,9 @@ def _pycolon(env, st):
 		etxt = len(env.c_txt)
 		env.word()
 	env.po = ''
-	env.err.append("Input end pycompiling word {}\n{}".format(c_w,
+	env.err.append("Input end py compiling word {}\n{}".format(c_w,
 		env.mk_err()))
-	raise SyntaxError("Input end pycompiling word {}".format(c_w))
+	raise SyntaxError("Input end py compiling word {}".format(c_w))
 
 def _scolon(env, st):
 	"""End compiling word."""
@@ -1152,7 +1193,7 @@ def _py_gt(env, st):
 	env.po = ''
 
 def _py_doc(env, st):
-	"""Copy doc from a pyton func __doc__ to latest word."""
+	"""Copy doc from a python func __doc__ to latest word."""
 	env.po = 'pyd> ';
 	env.word()
 	try:

@@ -8,15 +8,15 @@
 
 This is first incomplete draft of WHORTH implementing some FORTH like
 stuff on top of Python. Uses Pythons Duck typing and plan to keep the
-neetnes of that in part despice loos plans of a WASM implemention.
-Thus dose not even atempt to be standard FORTH - WHORTH will remain
+neatness of that in part despise loos plans of a WASM implementation.
+Thus dose not even attempt to be standard FORTH - WHORTH will remain
 an ugly duckling!
 
-This is mainly a terapy project for kognitiv training recovering from
-illnes. No garanties of continius work can be given at the moment (I'm
-also in desperat need to take any opertunity to make some money whenever someting I can do turn up). Fokusing is part of the problem and not even
-reply to queries can be promised. WHORTH is shosen tho for a slim
-potential to actually be usfull eventialy - At least as a frendly
+This is mainly a therapy project for cognitive training recovering from
+illness. No guaranties of continuous work can be given at the moment (I'm
+also in desperate need to take any opportunity to make some money whenever something I can do turn up). Focusing is part of the problem and not even
+reply to queries can be promised. WHORTH is chosen tho for a slim
+potential to actually be useful eventually - At least as a friendly
 playground. Have fun!
 """
 
@@ -46,7 +46,7 @@ class Wpst(slt.SlotsBase):
 	"""Whorth parse stack (pst) item."""
 	__slots__ = {
 		'tok':   'Token - What kind of struct (comment, if, str, loop etc)',
-		'sb':    'Start bufer',
+		'sb':    'Start buffer',
 		'sp':    'Start pointer',
 		'eb':    'End buffer',
 		'ep':    'End pointer',
@@ -79,10 +79,10 @@ class Wpst(slt.SlotsBase):
 		return self.es and (ch in self.es)
 
 class Wmeta(slt.SlotsBase):
-	"""Metadata for a py whorth word. Canonical varid: wm."""
+	"""Metadata for a whorth word."""
 	__slots__ = {
 		'w':       'whorth word name.',
-		'idx':     'Dictonary index number.',
+		'idx':     'Dictionary index number.',
 		'sig':     'stack signature.',
 		'flag':    'Word flags. Can be used with & | &= |= from wm.',
 		'doc':     'Documentation string.',
@@ -93,7 +93,7 @@ class Wmeta(slt.SlotsBase):
 
 	# Flags
 	IM = 1
-	"""Imidiate word - runs during compile."""
+	"""Immediate word - runs during compile."""
 
 	def __init__(self, w, idx,
 			sig='', flag=0, doc=None, wsrc=None, pyfn=None, pybdy=None):
@@ -106,9 +106,9 @@ class Wmeta(slt.SlotsBase):
 		"""Return short string presentation."""
 		return '{' + self.w + '}'
 
-	def __repr__(self):
-		"""Same as __str__, use asdict for serialization."""
-		return self.__str__() # repr(self.asdict())
+	#def __repr__(self):
+	#	"""Same as __str__, use asdict for serialization."""
+	#	return self.__str__() # repr(self.asdict())
 
 # some utility functions.
 
@@ -182,7 +182,7 @@ def shfloat(n, ml=7):
 		return '0.0'
 
 def shdots(n, ml=7):
-	"""Shortdots, konvert value to shortish string (aming for ml chars)."""
+	"""Shortdots, convert value to shortish string (aiming for ml chars)."""
 	if isinstance(n, float):
 		return shfloat(n, ml)
 	if isinstance(n, str):
@@ -192,7 +192,7 @@ def shdots(n, ml=7):
 	return whr_s(n)
 
 def shdotr(n, ml=8):
-	"""Shortdotr, konvert value to shortish repr (aming for ml chars)."""
+	"""Shortdotr, convert value to shortish repr (aiming for ml chars)."""
 	if isinstance(n, float):
 		return shfloat(n, ml)
 	if isinstance(n, str):
@@ -202,7 +202,7 @@ def shdotr(n, ml=8):
 	return whr_rs(n)
 
 class Whorth(slt.SlotsBase):
-	"""Metadata for a whorth word. Canonical varid: wm."""
+	"""Whorth environment that can run worth code."""
 	__slots__ = {
 		'glob': """Globals.""",
 		'ib': """Input buffer.""",
@@ -216,19 +216,19 @@ class Whorth(slt.SlotsBase):
 		'cst': """Compile stack""",
 		'w': """Word buffer - latest word read from ib.""",
 		'w_in': """'pointer' to word to refill input buffer.""",
-		'po': """Prompt oweride.""",
+		'po': """Prompt override.""",
 		'pn': """Prompt depth - how much of stack to show in prompt.""",
 		'pnn': """Prompt width - width of each stack element in prompt.""",
 		'dic': """Word lookup dictionary.""",
 		'err': """List of error messages.""",
 		'dicl': """List of word implementations.""",
 		'dicd': """List of word metadata and stuff.""",
-		'c_wm': """Wmeta for word curently being compiled.
+		'c_wm': """Wmeta for word currently being compiled.
 			Not None indicate compilation.""",
 		'c_sig': """Signature of word being defined.""",
 		'c_flag': """Flags of word being compiled.""",
 		'c_w': """Word being defined or '' indicating interpreter mode.""",
-		'c_mp': """Start memorypossition of word being defined.""",
+		'c_mp': """Start memory position of word being defined.""",
 		#c_p = 0 compilation pointer - implicit as end of program memmory.
 		'c_txt': """Full text of word being defined.""",
 		#'exdic': """Exported word lookup dictionary.""",
@@ -303,9 +303,11 @@ class Whorth(slt.SlotsBase):
 		D('lsw', '>',     'env.lsw()')
 		d('List all loaded words')
 		D("lsi'", '>', 'env.po=None;env.word();print(env.lsis(env.w));env.po=""')
-		d("""List import directory acording to folowing word (the path).
+		d("""List import directory according to following word (the path).
 
-The path is a . delimeted list of directorys. Just a dot list the root. Directorys are listed in {}, imports bare or surounded by * if already imported. If the path go all the way to an import the source of it is displayed.""")
+The path is a . delimited list of modules. Just a dot list the root. Modules
+are listed in {}, imports bare or surrounded by * if already imported. If the
+path go all the way to an import the source of it is displayed.""")
 		D("imp'", '>', 'env.po=None;env.word();env.imp(env.w);env.po=""')
 		d("import the folowing word (the path). Se 'help> lsi>' for more.")
 		D('inp',  '>', Whorth.inp)
@@ -355,7 +357,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 	def pyimport(self, word=None):
 		"""import a whorth word to a python callable that is returned.
 
-			argument and returnvalue is taken from words signature.
+			argument and return value is taken from words signature.
 			word default to name of latest word defined."""
 		if word is None:
 			mt = self.dicd[-1]
@@ -369,8 +371,8 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 		return self.PyEx(self, n, i, o) #, doc)
 
 	def pyexport(self, *dic, glob=False, **exp):
-		"""Add exports that can be inported from Whorth."""
-		# Atempt to mimic the situation inside of a WASM sandbox here.
+		"""Add exports that can be imported from Whorth."""
+		# Attempt to mimic the situation inside of a WASM sandbox here.
 		ex = Whorth.gxto if glob else self.xto
 		dic = list(*dic) + [exp]
 		for x in dic:
@@ -428,7 +430,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 		"""import path to this whorth env."""
 		p = self.ipt(path)
 		if p is None:
-			print('ERROR: ignor import:', path)
+			print('ERROR: ignore import:', path)
 			return
 		if isinstance(p, dict):
 			print('ERROR: cant import a dict:', path)
@@ -454,7 +456,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 			self.setglob(glob)
 
 	def lsis(self, path='.'):
-		"""List imports avalible to whorth to a string."""
+		"""List imports available to whorth to a string."""
 		p = self.ipt(path)
 		if p is None:
 			print('ERROR: bad path:', path)
@@ -483,7 +485,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 		wname = dic.get('__name__','')
 		if wname == '__main__': wname = 'WHORTH'
 		if isinstance(pack, str):
-			return "\nWhorth pargraph:   {}   module: {}\n\n{}".format(key,
+			return "\nWhorth paragraph:   {}   module: {}\n\n{}".format(key,
 				wname, pack)
 		return "\nPyfunc whorth paragraph:   {}   module: {}\n\n{}".format(key,
 			wname, getattr(pack, '__doc__', 'no docstring.'))
@@ -564,7 +566,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 			sig=sig, flag=flag, pyfn=py_func, pybdy=func)
 
 	def setIM(self, st=None):
-		""" Mark latest defined word as imideate."""
+		""" Mark latest defined word as immediate."""
 		self.dicd[-1].flag |= Wmeta.IM
 
 	def doc(env, key = -1):
@@ -628,10 +630,10 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 			cur = self.pst[-1]
 			while cur.eb and ((cur.eb != ib) or ((ip-l) > cur.ep)):
 				if cur.flag & C_W:
-					self.e('Reclame of str holding C_W')
+					self.e('Reclaim of str holding C_W')
 					self.e(self.mk_err(ip=ip))
 					self.e(self.pststr())
-					raise(SyntaxError('Reclame of str holding C_W'))
+					raise(SyntaxError('Reclaim of str holding C_W'))
 				self.pst.pop()
 				if self.pst:
 					cur = self.pst[-1]
@@ -669,11 +671,11 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 						return 0
 				if ch and (ch in '}])'):
 					if not (cur.es[0] == ch):
-						self.e('PST Mismach ch: {} vs {}\n{}\n{}'.format(
+						self.e('PST Mismatch ch: {} vs {}\n{}\n{}'.format(
 							ch, cur.es, self.mk_err(ib=cur.sb, ip=cur.sp),
 							self.mk_err(ip=ip)))
 						self.e(self.pststr())
-						raise(SyntaxError('PST Mismach ch: {} vs {}'.format(ch,
+						raise(SyntaxError('PST Mismatch ch: {} vs {}'.format(ch,
 							cur.es)))
 					cur.eb = ib
 					cur.ep = ip
@@ -738,7 +740,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 		return 2 if ch in ' \t\n' else 1
 
 	def scip(self, chs=' \t\n'):
-		"""Scip over set of chars in input buffer (default witespace)."""
+		"""Scip over set of chars in input buffer (default whitespace)."""
 		ib = self.ib
 		if ib == 'q':
 			return
@@ -772,7 +774,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 	
 
 	def scan(self, chs=' \t\n'):
-		"""Scan to a set of chars in input buffer (default witespace)."""
+		"""Scan to a set of chars in input buffer (default whitespace)."""
 		ib = self.ib
 		ip = self.ip
 		txt = ip
@@ -821,7 +823,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 		self.w = self.ib[sp:self.ip]
 
 	def sdots(self, _=None):
-		"""nondestructiv get stack as string"""
+		"""nondestructive get stack as string"""
 		return '{}: {}'.format(len(self.st),
 			' '.join(whr_rs(n) for n in self.st))
 
@@ -860,7 +862,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 			self.ib = 'q'
 
 	def binterp(self, x_p):
-		"""bytecode intepreter aka bin/inner interpreter."""
+		"""bytecode interpreter aka bin/inner interpreter."""
 		r = self.r
 		mem = self.w_mem
 		st = self.st
@@ -882,7 +884,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 			nxt = mem[r[-1]]
 
 	def literal(self, st):
-		"""Convert litteral in w and put on stack or raise error."""
+		"""Convert literal in w and put on stack or raise error."""
 		w = self.w
 		if self.pst:
 			cur = self.pst[-1]
@@ -1009,7 +1011,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 		print("\nWHORTH - the ugly duckling of Forth.\n")
 		print(
 		  ' Entering "help" give help. If not "imp\' lib.help" should load it.')
-		print(' "q" on empty line to quit. "lsw" to se loaded words.\n')
+		print(' "q" on empty line to quit. "lsw" to see loaded words.\n')
 		if st is None:
 			st = self.st
 		self.clear_err()
@@ -1028,7 +1030,7 @@ The path is a . delimeted list of directorys. Just a dot list the root. Director
 				return
 			except Exception as e:
 				if self.ib == 'q':
-					print("\nException caught while quiting sh")
+					print("\nException caught while quitting sh")
 					self.print_err(e)
 					print(format_exc())
 					break
