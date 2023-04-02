@@ -7,4 +7,4 @@ It might become usefull thou, and is fun playing with. It's a bastard FORTH curr
 
 Progress will be sporadic and depending on both recovery and economy.
 
-[WIKI](https://github.com/lahlab/wiki) | [DISCUSS](https://github.com/lahlab/whorth/discussions) | [LaH](https://github.com/lahlab) - The WHORTH institutionalized patient for life
+[WIKI](https://github.com/lahlab/whorth/wiki) | [DISCUSS](https://github.com/lahlab/whorth/discussions) | [LaH](https://github.com/lahlab) - The WHORTH institutionalized patient for life
