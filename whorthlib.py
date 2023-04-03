@@ -278,12 +278,12 @@ whrp_input = r"""
 imp"pycomp"
 
 #" Word scanner "#
-py: scip (>) env.scip() ;
+py: skip (>) env.skip() ;
 D#"Skip to next word. If 'inp' is set may trigger a read to the input buffer."#
 py: scan (>) env.scan() ; D#"Scan to end of word, newer past input buffer"#
 py: word (>) env.word() ;
 D##"Parse next word from input to wordbuf. If 'inp' is set may trigger a
-read to the input buffer (actually done by scip)."##
+read to the input buffer (actually done by skip)."##
 
 #" Manual input "#
 py> input (prmpt > inp) whr.Whorth.input
@@ -300,7 +300,7 @@ py: ib! (s >) env.ib = st.pop() ;        D#"Store to input buffer."#
 
 py: w_in@ (> f) st.append(env.w_in) ; #"Fetch callback - see w_in! for more."#
 py: w_in! (f >) env.w_in = st.pop() ;
-##"Store a callback that is called by word (scip actually) when the input
+##"Store a callback that is called by word (skip actually) when the input
 buffer run empty. Should refill the buffer."##
 
 py: mty@ (> f) st.append(env.i_mty) ; #"Fetch callback - se mty! for more."#
@@ -759,7 +759,7 @@ py: sh.r (x x > s) m=st.pop();st.append(whr.shdotr(st.pop(),m)) ;
 whrp_comp_extra = r"""
 imp' comp
 
-py: scips (s >) env.scip(st.pop()) ;
+py: skips (s >) env.skip(st.pop()) ;
 py: scans (s >) env.scan(st.pop()) ;
 py: find (s > i) st[0]=env.find(st[0]) ;
 
@@ -1118,7 +1118,7 @@ def _wstartcomp(env, flag=0):
 	env.c_w = env.w
 	env.c_flag = flag # | __IW
 	env.c_txt = env.ib[txt:env.ip]
-	env.scip()
+	env.skip()
 	if env.ib[env.ip] != '(':
 		env.c_sig = ''
 	else:
@@ -1134,7 +1134,7 @@ def _pycolon(env, st):
 	"""Compile a python word. It ends with ';'"""
 	env.po = 'py: '
 	_wstartcomp(env)
-	env.scip()
+	env.skip()
 	stxt = len(env.c_txt)
 	etxt = stxt
 	env.word()

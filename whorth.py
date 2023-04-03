@@ -623,8 +623,8 @@ path go all the way to an import the source of it is displayed.""")
 				self.c_txt = ''
 				cur.flag &= ~C_W
 
-	def checkpst(self, ch, ip, l, scip=0): # , scip)
-		# ret bitfield. 1: keep scan   2: keep scip .ctx .c_w
+	def checkpst(self, ch, ip, l): #, skip=0): # , skip)
+		# ret bitfield. 1: keep scan   2: keep skip .ctx .c_w
 		ib = self.ib
 		if self.pst: # Drop Zombie pst element.
 			cur = self.pst[-1]
@@ -739,15 +739,15 @@ path go all the way to an import the source of it is displayed.""")
 			return 1
 		return 2 if ch in ' \t\n' else 1
 
-	def scip(self, chs=' \t\n'):
-		"""Scip over set of chars in input buffer (default whitespace)."""
+	def skip(self, chs=' \t\n'):
+		"""Skip over set of chars in input buffer (default whitespace)."""
 		ib = self.ib
 		if ib == 'q':
 			return
 		ip = self.ip
 		txt = ip
 		c = ib[ip:ip+1]
-		while self.checkpst(c, ip, ip-txt, 1) & 2:
+		while self.checkpst(c, ip, ip-txt) & 2:
 			if not c:
 				if (self.po is not None) and self.w_in:
 					if self.c_w:
@@ -797,7 +797,7 @@ path go all the way to an import the source of it is displayed.""")
 	def word(self):
 		""" read one word from the input buffer to the word buffer """
 		while True:
-			self.scip()
+			self.skip()
 			if self.ib == 'q':
 				self.w = ''
 				return
