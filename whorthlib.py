@@ -528,8 +528,8 @@ out. Here is an simplified example of a Forth word (.") defined in Whorth:
             : .' (>) s' . ;
 
 ":" is the compiler, ".'" is the word being defined, "(>)" is the stack
-signature, "s'" fetch the next word from input put it on the stack as a
-string, "." print it and ";" end the compile and store the new word to
+signature, "s'" fetch the next word from input and put it on the stack as
+a string, "." print it and ";" end the compile and store the new word to
 the dictionary. How do .' become ."? see next page.
 
 Welcome back to the prompt and use an empty line to continue...">>
@@ -538,7 +538,7 @@ Welcome back to the prompt and use an empty line to continue...">>
 : help5 (>) <<"
 Ex:   ."Hello World"   .' for_one_word   .<|"fancy"|>
 
-In Forth You would need a space after '."' but Whorth don't need that
+In FORTH You would need a space after '."' but WHORTH don't need that
 (making hello world one char shorter). Whorth turn "text" into string, and
 if there is a prefix (like ."str") the prefix is called with ' added. That's
 how we used .' to define ." above. The last fancy example uses decorators,
@@ -548,15 +548,32 @@ The prefix is then called with "#'" added. The prefix "D#'" is defined and
 add documentation to the latest word. Use it like below and the
 documentation will turn up when using help'.
 
-   : .' (>)  word w@ . ; D#"Print a string but no compiling."#
+   : .' (>)  s' . ; D#"Print a string but no compiling."#
 
-Yes, Forth's ." also compiles so its usable in words. "hello" . works when
-compiling Whorth words so ." is not so needed and don't exist yet.
+Yes, the real .' also compiles so its usable in words...
 
 Welcome back to the prompt and use an empty line to continue...">>
 "help6" look func@ mty! . ;
 
 : help6 (>) <<"
+Immediate words are word that run during compile rather then being compiled.
+This make it possible to add things to the language itself, this is how if
+statements and loops are written and this is how we have to make a .' that
+works during compile. This is the one defined in lib.interp:
+
+: .' (>) s'   cmpl@ if{ IM?!' lit>   >here   IM?!' . }el{ . }then ; IM
+
+The IM at the end is what flag the word as immediate. Sometimes You do want
+to compile immidiate words "IM!' imword" will compile imword whether it is
+immediate or not. IM!!' will make the word we writing compile the following
+word into the word that are compiling when the word we writing are executed.
+That is useful when writing immediate word. IM?!' is even more useful as it
+make the right thing whether the word we want to compile are immediate or
+not. More to be written about this, don't worry if You don't get it all - it
+is far to short!">>
+"help7" look func@ mty! . ;
+
+: help7 (>) <<"
 Whorth is far from complete and a moving target. It use python as its
 assembler but the long plan is to also support wasm, js and possible more.
 Error messages are horrible and more for debugging Whorth then Whorth code
