@@ -329,31 +329,44 @@ D#"Get copy of top pst element new side stack style"#
 py: pst@> (n > pst) i=st.pop(); assert(i>=0); st.append(env.pst[-1-i]) ;
 D#"Get copy of n:th pst element from top (new side stack notation)"#
 
-py: mkpstl (pst >) p = st.pop();
+#"Assuming pst top below, word wanting pst element on stack starts with -"#
+py: -mkpstl (pst >) p = st.pop();
 if p.lst is None: p.lst = [] ; D#"Make pst lst (if needed)."#
+: mkpstl (>) pst0> -mkpstl ;   D#"Make pst lst (if needed)."#
 
-py: psttok@ (pst > tok) st.append(st.pop().tok) ;
+py: -psttok@ (pst > tok) st.append(st.pop().tok) ;
 D#"Fetch token from pst element on stack."#
-py: psttok! (tok pst >) p=st.pop(); p.tok = st.pop() ;
+py: -psttok! (tok pst >) p=st.pop(); p.tok = st.pop() ;
 D#"Store token to pst element on stack."#
-py: pstl@ (pst > l) st.append(st.pop().lst) ;
+py: -pstl@ (pst > l) st.append(st.pop().lst) ;
 D#"Fetch list from pst element on stack."#
-py: pstfnc@ (pst > fnc) st.append(st.pop().efnc) ;
+py: -pstfnc@ (pst > fnc) st.append(st.pop().efnc) ;
 D#"Fetch end func from pst element on stack."#
-py: pstfnc! (fnc pst >) p=st.pop(); p.efnc = st.pop() ;
+py: -pstfnc! (fnc pst >) p=st.pop(); p.efnc = st.pop() ;
 D#"Store end func to pst element on stack."#
 
 #" Shortcut for pst top item."#
-: psttok0>  (> tok)  pst0> psttok@ ;
+: psttok@  (> tok)  pst0> -psttok@ ;
 D#"Fetch token from top pst element."#
-: >0psttok  (tok >)  pst0> psttok! ;
+: psttok!  (tok >)  pst0> -psttok! ;
 D#"Store token to top pst element."#
-: pstl0>   (> l)    pst0> pstl@ ;
+: pstl@   (> l)    pst0> -pstl@ ;
 D#"Fetch list from top pst element."#
-: pstfnc0> (> fnc)  pst0> pstfnc@ ;
+: pstfnc@ (> fnc)  pst0> -pstfnc@ ;
 D#"Fetch end func from top pst element."#
-: >0pstfnc (fnc >)  pst0> pstfnc! ;
+: pstfnc! (fnc >)  pst0> -pstfnc! ;
 D#"Store end func to top pst element."#
+
+#" Shortcuts for pst top items list."#
+: pstl>   (> l)    pst0> -pstl@ l> ;
+: >pstl   (> l)    pst0> -pstl@ >l ;
+: pstl0>  (> l)    pst0> -pstl@ l0> ;
+: >0pstl  (> l)    pst0> -pstl@ >0l ;
+: pstl1>  (> l)    pst0> -pstl@ l1> ;
+: >1pstl  (> l)    pst0> -pstl@ >1l ;
+: pstl2>  (> l)    pst0> -pstl@ l2> ;
+: >2pstl  (> l)    pst0> -pstl@ >2l ;
+
 """
 
 whrp_interp = r"""
@@ -865,7 +878,8 @@ is false."##
 
 whrp_if = r"""
 #" ? if{ ? }if{ - }br{ -- }el{ ? }if{ -- }el{ - }fin{ - }then - statement"#
-imp' stack      imp' recur      imp' list
+#" imp' stack      "#
+imp' recur      imp' list      imp' pst
 
 : help-if (>) <<"
 Words impl 'if{ - }el{ - }then' statement. 'if{' and '}el{' (else) can be
@@ -881,7 +895,7 @@ Example: 'flag' if{'expensive test'}if{'cleanup'}br{'do stuff on success ...'
          }then 'continue merged control flow after if statement.'
 ">> . ;
 
-##"Implemented by storing state in two list on sst, the top one jump
+##"Implemented by storing state in two list on pst, the top one jump
 locations for }el{ and the second one jump locations for '}fin{'. '}br{'
 also use the top one. '}then' sets all remaining jump locations and
 drop state."##
@@ -891,24 +905,24 @@ D#"Consume list of addr and store relative addr to here in them."#
 
 : ljmp! (l >)   _ljmp!   drop ; D#"Store addrs with _ljmp! and drop list."#
 
-: "if{" (b >) IM!!' !?jmp   List >sst   List >sst
-              here sst0> >l   1 >here ; IM
+: "if{" (b >) IM!!' !?jmp   mkpstl   List >pstl   List >pstl
+              here pstl0> >l   1 >here ; IM
 D#"Starting a 'if{ - }el{ - }then' statement. see: help-if"#
 
-: "}el{" (>) IM!!' jmp   here sst1> >l   1 >here   sst0> ljmp! ; IM
+: "}el{" (>) IM!!' jmp   here pstl1> >l   1 >here   pstl0> ljmp! ; IM
 D#"Collect control flow from failed 'if{ / }if{' and '}br{'. see help-if"#
 
-: "}then" (>) sst> ljmp!    sst> ljmp! ; IM
+: "}then" (>) pstl> ljmp!    pstl> ljmp! ; IM
 D#"Collect all remaining control flow and end if statement. see help-if"#
 
-: "}if{" (b >) IM!!' !?jmp   here sst0> >l   1 >here ; IM
+: "}if{" (b >) IM!!' !?jmp   here pstl0> >l   1 >here ; IM
 D##"Extra conditions on each 'if{' / '}el{' leg. Each 'if{' / '}el{' can
 have several '}if{' with or without '}br{'. see: help-if"##
 
-: "}br{" (>) IM!!' jmp   1 >here   sst0> l> jmphere   here 1- sst0> >l ; IM
+: "}br{" (>) IM!!' jmp   1 >here   pstl0> l> jmphere   here 1- pstl0> >l ; IM
 D#"Turn an '}if{' into 'abort if'. see: help-if"#
 
-: "}fin{" (>) IM!!' jmp   here sst0> >l   1 >here   sst1> ljmp! ; IM
+: "}fin{" (>) IM!!' jmp   here pstl0> >l   1 >here   pstl1> ljmp! ; IM
 D##"'finalize': collect control flow from succeeding if{ / }el{ }if{ for
 common exit code. see: help-if"##
 """
