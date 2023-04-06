@@ -229,9 +229,14 @@ D#"(tick) Look up index (exec token) of following word."#
 : f' (> fnc) ' func@ ; D#"(f-tick) look up func for following word."#
 : m' (> m) ' meta@ ; D#"(m-tick) Look upp meta info for following word."#
 
-: >IM!  (idx >)  func@ >here ;  D#"Compile word by idx."#
-: >IM!! (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
+: >IM!   (idx >)  func@ >here ;  D#"Compile word by idx."#
+: f>IM!  (f >)    >here ;  D#"Compile func f."#
+
+: >IM!!  (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
 D#"Make word being compiled compile word by idx."#
+: f>IM!! (f >)    lit> lit> >here   >here   lit> >here >here ;
+D#"Make word being compiled compile func f."#
+
 : IM!'  (>)  ' >IM!  ;  IM  D#"Compile next word regardless of IM"#
 : IM!!' (>)  ' >IM!! ;  IM
 #" : IM!!' (>) lit> lit> >here   f' >here   lit> >here >here ; IM "#
@@ -355,15 +360,25 @@ whrp_interp = r"""
 imp' comp      imp' meta      imp' if
 
 #" interpreter / compiler envirionment. "#
-py: cmpl? (> flag) st.append(env.compiling()) ;
-D#"True if we are currently compiling."#
-
-: IM?!' (>)  ' dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then ;
+py: cmpl@ (> flag) st.append(env.compiling()) ;
+D#"Fetch compiling flag. True if we are currently compiling."#
 
 #" Call whorth words "#
-py: call_s (s >) env.call(st.pop()) ;          D#"Call word named by s."#
-py: call (idx i >) env.call_idx(st.pop()) ;    D#"Call word with idx."#
+py: call_s   (s >)   env.call(st.pop()) ;      D#"Call word named by s."#
+py: call     (idx >) env.call_idx(st.pop()) ;  D#"Call word with idx."#
 py: call_fnc (fnc >) env.call_fnc(st.pop()) ;  D#"Call function."#
+
+: >IM? (>)  dup meta@ m_IM@ if{ call }el{ >IM! }then ;
+: IM?' (>)  ' >IM? ; IM #"dup meta@ m_IM@ if{ >IM! }el{ >IM! }then"#
+
+: >IM?! (>)  dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then ;
+: IM?!' (>)  ' >IM?! ; IM #"dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then"#
+D##"Make the word being compiled compile the following word if it is not
+immediate (IM) and run it if it is. Effectively moving the compiling
+behaviour of following word to the word being compiled."##
+
+: .' (>) s'   cmpl@ if{ IM?!' lit>   >here   IM?!' . }el{ . }then ; IM
+D#"Convenient printing of strings ie: ."Hello World""#
 
 py> interp (>) whr.Whorth.interp
 #"py> compl (>) compl"#
@@ -835,79 +850,125 @@ whrp_if = r"""
 #" ? if{ ? }if{ - }br{ -- }el{ ? }if{ -- }el{ - }fin{ - }then - statement"#
 imp' stack      imp' recur      imp' list
 
-: _ljmp! (l > l)   dup len !?RET   dup l> jmphere  TRECUR ;
-D#"Consume list of addr and store relative addr to here in them."#
-
-: ljmp! (l >)   _ljmp!   drop ; D#"Store addrs with _ljmp! and drop list."#
-
-: here>l (l >)   here swap >l ; D#"Push here to list and drop it"#
-
-: "if{" (b >) lit> !?jmp >here   List >sst   List >sst
-              here sst0> >l   1 >here ; IM
-D##"Words impl 'if{ - }el{ - }then' statement. 'if{' and '}el{' (else) can be
+: help-if (>) <<"
+Words impl 'if{ - }el{ - }then' statement. 'if{' and '}el{' (else) can be
 followed by '}if{' (and if) creating a shortcut test without nesting 'if{'.
 An '}if{' can be followed by a '}br{' (break) turning it in to an abort if
 with cleanup before joining '}el{'. An '}if{' following an '}el{' is
 effectively an elif. }fin{ (finalize) collect all previews 'successful'
 tests for a common exit code. The whole if statement is ended with '}then'.
 
-Implemented by storing state in two list on sst, the top one jump locations
-for }el{ and the second one jump locations for '}fin{'. '}br{' also use the
-top one. '}then' sets all remaining jump locations."##
+Example: 'flag' if{'expensive test'}if{'cleanup'}br{'do stuff on success ...'
+         }el{'Get here both if first if fail or after cleanup, ie all but
+              success.'
+         }then 'continue merged control flow after if statement.'
+">> . ;
 
-: "}el{" (>) lit> jmp >here   sst1> here>l   1 >here   sst0> ljmp! ; IM
-D#"Collect control flow from failed 'if{ / }if{' and '}br{' (see 'if{')."#
+##"Implemented by storing state in two list on sst, the top one jump
+locations for }el{ and the second one jump locations for '}fin{'. '}br{'
+also use the top one. '}then' sets all remaining jump locations and
+drop state."##
+
+: _ljmp! (l > l)   dup len !?RET   dup l> jmphere  TRECUR ;
+D#"Consume list of addr and store relative addr to here in them."#
+
+: ljmp! (l >)   _ljmp!   drop ; D#"Store addrs with _ljmp! and drop list."#
+
+: "if{" (b >) IM!!' !?jmp   List >sst   List >sst
+              here sst0> >l   1 >here ; IM
+D#"Starting a 'if{ - }el{ - }then' statement. see: help-if"#
+
+: "}el{" (>) IM!!' jmp   here sst1> >l   1 >here   sst0> ljmp! ; IM
+D#"Collect control flow from failed 'if{ / }if{' and '}br{'. see help-if"#
 
 : "}then" (>) sst> ljmp!    sst> ljmp! ; IM
-D#"Collect all remaining control flow and end if statement (drop state)."#
+D#"Collect all remaining control flow and end if statement. see help-if"#
 
-: "}if{" (b >) lit> !?jmp >here   sst0> here>l   1 >here ; IM
+: "}if{" (b >) IM!!' !?jmp   here sst0> >l   1 >here ; IM
 D##"Extra conditions on each 'if{' / '}el{' leg. Each 'if{' / '}el{' can
-have several '}if{' with or without '}br{'."##
+have several '}if{' with or without '}br{'. see: help-if"##
 
-: "}br{" (>) lit> jmp >here  sst0>  dup l> jmphere  here>l  1 >here ; IM
-D#"Turn an '}if{' into 'abort if' (see 'if{')."#
+: "}br{" (>) IM!!' jmp   1 >here   sst0> l> jmphere   here 1- sst0> >l ; IM
+D#"Turn an '}if{' into 'abort if'. see: help-if"#
 
-: "}fin{" (>) lit> jmp >here   sst0> here>l   1 >here   sst1> ljmp! ; IM
+: "}fin{" (>) IM!!' jmp   here sst0> >l   1 >here   sst1> ljmp! ; IM
 D##"'finalize': collect control flow from succeeding if{ / }el{ }if{ for
-common exit code. "##
+common exit code. see: help-if"##
 """
 whrp_IF = r"""
-##" Forth style IF -- ELSE -- THEN - statement and whorth simpl iter"##
 imp' stack      imp' jmp
 
-: IF (b >) lit> !?jmp >here  here >sst  1 >here ; IM
-D#"Words impl forth style IF - ELSE - THEN statement."#
+: help-IF (>) <<"
+Forth style IF -- ELSE -- THEN - statement. The WHORTH selection that don't
+relay on trains or fancy types like List. Mainly for defining low level words
+before train and fancy types are available (see: "help-if"). The words are:
+
+ flag IF     Start IF statement. Run following code block if flag true.
+      ELSE   End IF block and start a block run if IF is false (optional).
+      THEN   End if statement. Merge control flow.
+">> . ;
+
+: IF (flag >) lit> !?jmp >here  here >sst  1 >here ; IM
+D#"Start IF statement. Continue if flag true. see: help-IF"#
 
 : ELSE (>) lit> jmp >here   here  1 >here  sst> jmphere  >sst ; IM
-D#"Words impl forth style IF - ELSE - THEN statement."#
+D#"jump to THEN and make IF jump to following code block. see: help-IF"#
 
 : THEN (>) sst> jmphere ; IM
-D#"Words impl forth style IF - ELSE - THEN statement."#
+D#"End IF statement. Merge control flow. see: help-IF"#
+"""
 
-#"Odd naming below to not interfer white atempt to do std forth stuff."#
+whrp_ITER = r"""
+imp' IF
 
-: ITER (>) 0 >sst   0 >sst   here >sst ; IM
-D##"ITER .. [flag WHL] .. [flag WHL] .. RPT .. [[ELSE] .. THEN] statement.
+: help-ITER (>) <<"
+ITER is WHORTH looping structure that don't relay on trains or fancy types
+like List. Mainly for defining low level words before train and fancy types
+are available. The words are:
 
-ITER (iterate) .. RPT (repeat) is an endless loop. Optional WHL (while)
-break the loop if flag is false. Optional second WHL do the same but
-jump to ELSE/THEN instead of to RPT. That way You can have different
-exit code depending on witch while breaking. If You have two WHL You
-MUST have a THEN and may have a ELSE. If You don't have two WHL You
-MUST NOT have ELSE or THEN!"##
+      ITER     Iterate. ITER or FOR start a loop.
+      FOR      Iterate with a increment head not run first turn.
+      DO       Start body - join first and repeating flow in an FOR loop.
+ flag WHILE    Continue while true. jump to after REPEAT if flag is false.
+ flag UNTIL    Continue until true. jump to after REPEAT if flag is true.
+      LOOP     Loop back to ITER / FOR (use as many You like).
+ flag ?LOOP    Take a flag and loop back if true (use as many You like).
+      REPEAT   End a loop, loop back to ITER / FOR
+ flag ?REPEAT  End a loop, take a flag and loop back if true.
 
-: WHL (flag >) lit> !?jmp >here
-               here  sst1> IF  >2sst  ELSE  >1sst  THEN  1 >here ; IM
-D##" Break the loop if flag false. You may have two WHL and then, and only
-then, You MUST have a THEN and may have an ELSE. First WHL break to RPT and
-second to ELSE or THEN."##
+ITER .body. REPEAT is an endless loop. You may add as many LOOP as You
+like and only one of WHILE or UNTIL.
 
-: RPT (>) lit> jmp >here   sst> jmpthere
-          sst> dup  IF  jmphere  ELSE  drop  THEN
-          sst> dup  IF  >sst  ELSE  drop  THEN ; IM
-D##"Loop by jumping back to ITER. End an ITER statement unless it have two
-WHL in witch case, and only in that case, You need an THEN."##
+FOR .head. DO .body. REPEAT is a variant where head is skipped on the first
+turn (mainly for increment code). You may add as many LOOP as You like to
+both head and body and only one of WHILE or UNTIL to head or body.
+">> . ;
+
+: ITER (>) 0 >sst   here >sst ; IM
+D#"Start a iteration (loop), see: help-ITER"#
+
+: FOR (>) lit> jmp >here   1 >here   0 >sst   here >sst ; IM
+D#"Start a iteration (loop) with a head, see: help-ITER"#
+: DO (>) sst0> 1- jmphere ; IM
+D#"End head and start body in a FOR iteration (loop). see: help-ITER"#
+
+: UNTIL   (flag >)  lit>   ?jmp >here   here >1sst   1 >here ; IM
+D#"Break if flag true. MAX one UNTIL or WHILE - see: help-ITER"#
+
+: WHILE  (flag >)   lit>   !?jmp >here  here >1sst   1 >here ; IM
+D#"Break if flag false. MAX one UNTIL or WHILE - see: help-ITER"#
+
+: LOOP        ( >)  lit>   jmp >here   sst0> jmpthere ; IM
+D#"Loop back to start of iteration (ITER / FOR). see: help-ITER"#
+: ?LOOP   (flag >)  lit>  ?jmp >here   sst0> jmpthere ; IM
+D#"Loop back to start of iteration if flag true (ITER / FOR). see: help-ITER"#
+
+: REPEAT        (>) lit> jmp >here     sst> jmpthere
+             sst> dup  IF  jmphere  ELSE  drop  THEN ; IM
+D#"End a iteration (loop). Loop back to ITER / FOR. see: help-ITER"#
+: ?REPEAT  (flag >) lit> ?jmp >here    sst> jmpthere
+             sst> dup  IF  jmphere  ELSE  drop  THEN ; IM
+D#"End a iteration. Loop if flag true. see: help-ITER"#
 """
 # : qq ITER dup 10 < WHL dup 1+ dup 9 < WHL dup 3 + RPT 42 ELSE 666 THEN 9 ;
 
