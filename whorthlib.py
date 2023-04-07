@@ -253,12 +253,12 @@ py: _box (> a) st.append(env.r[-1]+1); env.r[-1] = 0 ; D#"Implement box'"#
 py: _const (> a) st.append(env.w_mem[env.r[-1]+1]); env.r[-1] = 0 ;
 D#"Implement const'"#
 
-: box' (>) word mkword IM!!' _box ;
-D##"Make a named storage place, a word returning its address when called
-for storing values. Do not reserve space - se allot and >here for ways to
-reserve and set memory. Or >box' for reserving and initiation."##
+: ebox' (>) word mkword IM!!' _box ;
+D##"Empty box. Make a named storage place, a word returning its address
+when called for storing values. Do not reserve space - se allot and >here
+for ways to reserve and set memory. Or use box' for single value."##
 
-: >box' (x >) box' >here ; 
+: box' (x >) ebox' >here ; 
 D##"Make a named storage place, a word returning its address when called
 for storing values. Initiate to the value on the stack reserving space
 for that value."##
@@ -338,6 +338,12 @@ py: -psttok@ (pst > tok) st.append(st.pop().tok) ;
 D#"Fetch token from pst element on stack."#
 py: -psttok! (tok pst >) p=st.pop(); p.tok = st.pop() ;
 D#"Store token to pst element on stack."#
+py: -pstptxt@ (pst > s) st.append(st.pop().ptxt) ;
+D#"Fetch post text from pst element on stack."#
+py: -inpstptxt (s pst > s) p=st.pop(); st.append(-(st.pop() in p.ptxt)) ;
+D#"True if s in ptxt (post text) of pst element on stack."#
+py: -pstptxt! (s pst >) p=st.pop(); p.ptxt = st.pop() ;
+D#"Store post text to pst element on stack."#
 py: -pstl@ (pst > l) st.append(st.pop().lst) ;
 D#"Fetch list from pst element on stack."#
 py: -pstfnc@ (pst > fnc) st.append(st.pop().efnc) ;
@@ -346,6 +352,8 @@ py: -pstfnc! (fnc pst >) p=st.pop(); p.efnc = st.pop() ;
 D#"Store end func to pst element on stack."#
 
 #" Shortcut for pst top item."#
+: inpstptxt  (s > flag)  pst0> -inpstptxt ;
+D#"True if s in ptxt (post text) of top pst element."#
 : psttok@  (> tok)  pst0> -psttok@ ;
 D#"Fetch token from top pst element."#
 : psttok!  (tok >)  pst0> -psttok! ;
@@ -393,7 +401,9 @@ D##"Make the word being compiled compile the following word if it is not
 immediate (IM) and run it if it is. Effectively moving the compiling
 behaviour of following word to the word being compiled."##
 
-: .' (>) s'   cmpl@ if{ IM?!' lit>   >here   IM?!' . }el{ . }then ; IM
+: .' (>) s'   cmpl@ if{ IM?!' lit>   >here
+                        "f" inpstptxt if{ IM?!' sfrmt }then   IM?!' .
+                   }el{ . }then ; IM
 D#"Convenient printing of strings ie: ."Hello World""#
 
 py> interp (>) whr.Whorth.interp

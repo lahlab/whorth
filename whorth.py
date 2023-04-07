@@ -165,9 +165,10 @@ def nsig(spl_sig):
 
 def shstr(s, mx=9):
 	"""Short string, truncate str to max mx chars."""
-	mx = max(5, mx)
+	mx = max(4, mx)
 	if len(s) > mx:
-		return s[:mx-3] + '…' + s[-2:] # …
+		post = mx // 4
+		return s[:mx-post-1] + '…' + s[-post:]
 	else:
 		return s
 
@@ -284,7 +285,7 @@ class Whorth(slt.SlotsBase):
 		self.glob = glob;     self.ib = '';           self.ip = 0
 		self.r = [ ];         self.w_mem = [None]*3;  self.st = [ ]
 		self.sst = [ ];       self.w = '';            self.w_in = 0
-		self.po = '';         self.pn = 4;            self.pnn = 8
+		self.po = '';         self.pn = 1;            self.pnn = 6
 		self.dic = { };       self.err = [ ];         self.dicl = [ ]
 		self.dicd = [ ];      self.c_wm = None;       self.c_sig = ''
 		self.c_flag = '';     self.c_w = '';          self.c_mp = 0
@@ -297,6 +298,7 @@ class Whorth(slt.SlotsBase):
 		d = self.addoc
 		D('lit>', '> x', 'env.r[-1]+=1; st.append(env.w_mem[env.r[-1]])')
 		d("Push val at exec pointer (xp) to the stack and advance xp.")
+		D('sfrmt', 's > s', Whorth.sfrmt); d(Whorth.sfrmt)
 		D('.',  'x >',   'print(whr_s(st.pop()))')
 		d('Print (and consume) top value on stack.')
 		D('s.', '>', Whorth.sdot); d(Whorth.sdot)
@@ -620,7 +622,7 @@ path go all the way to an import the source of it is displayed.""")
 			cur = self.pst[-1]
 			if cur.flag & C_W:
 				self.c_w = ''
-				self.c_txt = ''
+				#self.c_txt = ''
 				cur.flag &= ~C_W
 
 	def checkpst(self, ch, ip, l): #, skip=0): # , skip)
@@ -631,8 +633,10 @@ path go all the way to an import the source of it is displayed.""")
 			while cur.eb and ((cur.eb != ib) or ((ip-l) > cur.ep)):
 				if cur.flag & C_W:
 					self.e('Reclaim of str holding C_W')
+					self.e("w:{} c_w:{}".format(repr(self.w), repr(self.c_w)))
 					self.e(self.mk_err(ip=ip))
 					self.e(self.pststr())
+					self.clrpstC_W()
 					raise(SyntaxError('Reclaim of str holding C_W'))
 				self.pst.pop()
 				if self.pst:
@@ -786,6 +790,11 @@ path go all the way to an import the source of it is displayed.""")
 			self.c_txt += ib[txt:ip]
 		self.ip = ip
 
+	def sfrmt(self, st):
+		"""Format a string with stack as parameters (top first)."""
+		s = st.pop()
+		st.append(s.format(*reversed(st)))
+
 	def find(self, ses):
 		"""find ses in input buffer starting at ip returning index in
 			input buffer or ip if ses not found.""" 
@@ -793,6 +802,13 @@ path go all the way to an import the source of it is displayed.""")
 			return self.ib.index(ses, self.ip)
 		except:
 			return self.ip
+
+	def fword(self, ptxt):
+		"""Process format string for current word"""
+		if 'F' in ptxt:
+			self.w = self.w.format(*reversed(self.st))
+		elif ('f' in ptxt) and not self.compiling():
+			self.w = self.w.format(*reversed(self.st))
 
 	def word(self):
 		""" read one word from the input buffer to the word buffer """
@@ -813,6 +829,8 @@ path go all the way to an import the source of it is displayed.""")
 						self.w = self.c_txt[cur.c_sp:len(self.c_txt)
 							+ cur.ep - self.ip]
 						self.clrpstC_W()
+						if cur.ptxt:
+							self.fword(cur.ptxt)
 						return
 					elif cur.sb == self.ib:
 						ends = "#'" if '#' in cur.es else "'"
@@ -821,6 +839,12 @@ path go all the way to an import the source of it is displayed.""")
 						return
 			break
 		self.w = self.ib[sp:self.ip]
+		if self.pst:
+			#print("should this happen?")
+			cur = self.pst[-1]
+			self.clrpstC_W()
+			if cur.ptxt:
+				self.fword(cur.ptxt)
 
 	def sdots(self, _=None):
 		"""nondestructive get stack as string"""
@@ -927,6 +951,7 @@ path go all the way to an import the source of it is displayed.""")
 		dl = env.dicl
 		dd = env.dicd
 		lit = dl[dic['lit>']]
+		sfrmt = dl[dic['sfrmt']]
 		env.word()
 		while env.w: # or (env.pst and (env.pst[-1].es[0] == '"'))):
 			n = dic.get(env.w, None)
@@ -935,6 +960,9 @@ path go all the way to an import the source of it is displayed.""")
 				if env.compiling():
 					mem.append(lit)
 					mem.append(st.pop())
+					#print(env.pst)
+					if env.pst and ('f' in env.pst[-1].ptxt):
+						mem.append(sfrmt)
 			else:
 				if env.compiling() and (not (dd[n].flag & Wmeta.IM)):
 					mem.append(dl[n])
@@ -1008,7 +1036,7 @@ path go all the way to an import the source of it is displayed.""")
 
 	def sh(self, st=None):
 		"""Run an interactive whorth shell."""
-		print("\nWHORTH - the ugly duckling of Forth.\n")
+		print("\nWHORTH - the ugly duckling of FORTH.\n")
 		print(
 		  ' Entering "help" give help. If not "imp\' lib.help" should load it.')
 		print(' "q" on empty line to quit. "lsw" to see loaded words.\n')
