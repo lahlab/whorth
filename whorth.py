@@ -1044,5 +1044,14 @@ path go all the way to an import the source of it is displayed.""")
 
 if __name__ == '__main__':
 	env = Whorth() # pack=False)
+	histfile = './.__WHORTH__.hst'
+	try:
+		readline.read_history_file(histfile)
+	except FileNotFoundError:
+		pass
+	readline.set_history_length(256)
+	atexit.register(readline.write_history_file, histfile)
+	#readline.set_auto_history(False)
+
 	env.sh()
 

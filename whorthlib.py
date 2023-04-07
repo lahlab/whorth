@@ -229,19 +229,19 @@ D#"(tick) Look up index (exec token) of following word."#
 : f' (> fnc) ' func@ ; D#"(f-tick) look up func for following word."#
 : m' (> m) ' meta@ ; D#"(m-tick) Look upp meta info for following word."#
 
-: >IM!   (idx >)  func@ >here ;  D#"Compile word by idx."#
-: f>IM!  (f >)    >here ;  D#"Compile func f."#
+: IM!   (idx >)  func@ >here ;  D#"Compile word by idx."#
+#": fIM!  (f >)    >here ;  D#"Compile func f."#
 
-: >IM!!  (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
+: IM!!  (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
 D#"Make word being compiled compile word by idx."#
-: f>IM!! (f >)    lit> lit> >here   >here   lit> >here >here ;
+#": fIM!! (f >)    lit> lit> >here   >here   lit> >here >here ;
 D#"Make word being compiled compile func f."#
 
-: IM!'  (>)  ' >IM!  ;  IM  D#"Compile next word regardless of IM"#
-: IM!!' (>)  ' >IM!! ;  IM
+: IM!'  (>)  ' IM!  ;  IM  D#"Compile next word regardless of IM"#
+: IM!!' (>)  ' IM!! ;  IM
 #" : IM!!' (>) lit> lit> >here   f' >here   lit> >here >here ; IM "#
 D#"Make the word being compiled compile next word regardless of IM"#
-: IM>' (>) word callword ; IM  D#"Call next word immediately"#
+: IM' (>) word callword ; IM  D#"Call next word immediately"#
 #" More IM* words in lib.intrp "#
 """
 # #S: #py: #D: #:
@@ -381,11 +381,14 @@ py: call_s   (s >)   env.call(st.pop()) ;      D#"Call word named by s."#
 py: call     (idx >) env.call_idx(st.pop()) ;  D#"Call word with idx."#
 py: call_fnc (fnc >) env.call_fnc(st.pop()) ;  D#"Call function."#
 
-: >IM? (>)  dup meta@ m_IM@ if{ call }el{ >IM! }then ;
-: IM?' (>)  ' >IM? ; IM #"dup meta@ m_IM@ if{ >IM! }el{ >IM! }then"#
+: IM@ (idx > IMflag) meta@ m_IM@ ; D#"Fetch IM flag for word by idx"#
+: IM? (idx >)  dup IM@ if{ call }el{ IM! }then ; D#"See IM?'"#
+: IM?'    (>)  ' IM? ; IM
+D##"Run IM words and compile other words. This is what the compiler do and
+this word is for writing compilers rather then IM words."##
 
-: >IM?! (>)  dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then ;
-: IM?!' (>)  ' >IM?! ; IM #"dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then"#
+: IM?! (idx >)  dup meta@ m_IM@ if{ IM! }el{ IM!! }then ; D#"See IM?!'"#
+: IM?!'    (>)  ' IM?! ; IM
 D##"Make the word being compiled compile the following word if it is not
 immediate (IM) and run it if it is. Effectively moving the compiling
 behaviour of following word to the word being compiled."##
@@ -877,8 +880,6 @@ is false."##
 """
 
 whrp_if = r"""
-#" ? if{ ? }if{ - }br{ -- }el{ ? }if{ -- }el{ - }fin{ - }then - statement"#
-#" imp' stack      "#
 imp' recur      imp' list      imp' pst
 
 : help-if (>) <<"
