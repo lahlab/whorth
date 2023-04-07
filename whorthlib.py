@@ -229,14 +229,19 @@ D#"(tick) Look up index (exec token) of following word."#
 : f' (> fnc) ' func@ ; D#"(f-tick) look up func for following word."#
 : m' (> m) ' meta@ ; D#"(m-tick) Look upp meta info for following word."#
 
-: >IM!  (idx >)  func@ >here ;  D#"Compile word by idx."#
-: >IM!! (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
+: IM!   (idx >)  func@ >here ;  D#"Compile word by idx."#
+#": fIM!  (f >)    >here ;  D#"Compile func f."#
+
+: IM!!  (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
 D#"Make word being compiled compile word by idx."#
-: IM!'  (>)  ' >IM!  ;  IM  D#"Compile next word regardless of IM"#
-: IM!!' (>)  ' >IM!! ;  IM
+#": fIM!! (f >)    lit> lit> >here   >here   lit> >here >here ;
+D#"Make word being compiled compile func f."#
+
+: IM!'  (>)  ' IM!  ;  IM  D#"Compile next word regardless of IM"#
+: IM!!' (>)  ' IM!! ;  IM
 #" : IM!!' (>) lit> lit> >here   f' >here   lit> >here >here ; IM "#
 D#"Make the word being compiled compile next word regardless of IM"#
-: IM>' (>) word callword ; IM  D#"Call next word immediately"#
+: IM' (>) word callword ; IM  D#"Call next word immediately"#
 #" More IM* words in lib.intrp "#
 """
 # #S: #py: #D: #:
@@ -248,12 +253,12 @@ py: _box (> a) st.append(env.r[-1]+1); env.r[-1] = 0 ; D#"Implement box'"#
 py: _const (> a) st.append(env.w_mem[env.r[-1]+1]); env.r[-1] = 0 ;
 D#"Implement const'"#
 
-: box' (>) word mkword IM!!' _box ;
-D##"Make a named storage place, a word returning its address when called
-for storing values. Do not reserve space - se allot and >here for ways to
-reserve and set memory. Or >box' for reserving and initiation."##
+: ebox' (>) word mkword IM!!' _box ;
+D##"Empty box. Make a named storage place, a word returning its address
+when called for storing values. Do not reserve space - se allot and >here
+for ways to reserve and set memory. Or use box' for single value."##
 
-: >box' (x >) box' >here ; 
+: box' (x >) ebox' >here ; 
 D##"Make a named storage place, a word returning its address when called
 for storing values. Initiate to the value on the stack reserving space
 for that value."##
@@ -278,12 +283,12 @@ whrp_input = r"""
 imp"pycomp"
 
 #" Word scanner "#
-py: scip (>) env.scip() ;
+py: skip (>) env.skip() ;
 D#"Skip to next word. If 'inp' is set may trigger a read to the input buffer."#
 py: scan (>) env.scan() ; D#"Scan to end of word, newer past input buffer"#
 py: word (>) env.word() ;
 D##"Parse next word from input to wordbuf. If 'inp' is set may trigger a
-read to the input buffer (actually done by scip)."##
+read to the input buffer (actually done by skip)."##
 
 #" Manual input "#
 py> input (prmpt > inp) whr.Whorth.input
@@ -300,7 +305,7 @@ py: ib! (s >) env.ib = st.pop() ;        D#"Store to input buffer."#
 
 py: w_in@ (> f) st.append(env.w_in) ; #"Fetch callback - see w_in! for more."#
 py: w_in! (f >) env.w_in = st.pop() ;
-##"Store a callback that is called by word (scip actually) when the input
+##"Store a callback that is called by word (skip actually) when the input
 buffer run empty. Should refill the buffer."##
 
 py: mty@ (> f) st.append(env.i_mty) ; #"Fetch callback - se mty! for more."#
@@ -324,46 +329,82 @@ D#"Get copy of top pst element new side stack style"#
 py: pst@> (n > pst) i=st.pop(); assert(i>=0); st.append(env.pst[-1-i]) ;
 D#"Get copy of n:th pst element from top (new side stack notation)"#
 
-py: mkpstl (pst >) p = st.pop();
+#"Assuming pst top below, word wanting pst element on stack starts with -"#
+py: -mkpstl (pst >) p = st.pop();
 if p.lst is None: p.lst = [] ; D#"Make pst lst (if needed)."#
+: mkpstl (>) pst0> -mkpstl ;   D#"Make pst lst (if needed)."#
 
-py: psttok@ (pst > tok) st.append(st.pop().tok) ;
+py: -psttok@ (pst > tok) st.append(st.pop().tok) ;
 D#"Fetch token from pst element on stack."#
-py: psttok! (tok pst >) p=st.pop(); p.tok = st.pop() ;
+py: -psttok! (tok pst >) p=st.pop(); p.tok = st.pop() ;
 D#"Store token to pst element on stack."#
-py: pstl@ (pst > l) st.append(st.pop().lst) ;
+py: -pstptxt@ (pst > s) st.append(st.pop().ptxt) ;
+D#"Fetch post text from pst element on stack."#
+py: -inpstptxt (s pst > s) p=st.pop(); st.append(-(st.pop() in p.ptxt)) ;
+D#"True if s in ptxt (post text) of pst element on stack."#
+py: -pstptxt! (s pst >) p=st.pop(); p.ptxt = st.pop() ;
+D#"Store post text to pst element on stack."#
+py: -pstl@ (pst > l) st.append(st.pop().lst) ;
 D#"Fetch list from pst element on stack."#
-py: pstfnc@ (pst > fnc) st.append(st.pop().efnc) ;
+py: -pstfnc@ (pst > fnc) st.append(st.pop().efnc) ;
 D#"Fetch end func from pst element on stack."#
-py: pstfnc! (fnc pst >) p=st.pop(); p.efnc = st.pop() ;
+py: -pstfnc! (fnc pst >) p=st.pop(); p.efnc = st.pop() ;
 D#"Store end func to pst element on stack."#
 
 #" Shortcut for pst top item."#
-: psttok0>  (> tok)  pst0> psttok@ ;
+: inpstptxt  (s > flag)  pst0> -inpstptxt ;
+D#"True if s in ptxt (post text) of top pst element."#
+: psttok@  (> tok)  pst0> -psttok@ ;
 D#"Fetch token from top pst element."#
-: >0psttok  (tok >)  pst0> psttok! ;
+: psttok!  (tok >)  pst0> -psttok! ;
 D#"Store token to top pst element."#
-: pstl0>   (> l)    pst0> pstl@ ;
+: pstl@   (> l)    pst0> -pstl@ ;
 D#"Fetch list from top pst element."#
-: pstfnc0> (> fnc)  pst0> pstfnc@ ;
+: pstfnc@ (> fnc)  pst0> -pstfnc@ ;
 D#"Fetch end func from top pst element."#
-: >0pstfnc (fnc >)  pst0> pstfnc! ;
+: pstfnc! (fnc >)  pst0> -pstfnc! ;
 D#"Store end func to top pst element."#
+
+#" Shortcuts for pst top items list."#
+: pstl>   (> l)    pst0> -pstl@ l> ;
+: >pstl   (> l)    pst0> -pstl@ >l ;
+: pstl0>  (> l)    pst0> -pstl@ l0> ;
+: >0pstl  (> l)    pst0> -pstl@ >0l ;
+: pstl1>  (> l)    pst0> -pstl@ l1> ;
+: >1pstl  (> l)    pst0> -pstl@ >1l ;
+: pstl2>  (> l)    pst0> -pstl@ l2> ;
+: >2pstl  (> l)    pst0> -pstl@ >2l ;
+
 """
 
 whrp_interp = r"""
 imp' comp      imp' meta      imp' if
 
 #" interpreter / compiler envirionment. "#
-py: cmpl? (> flag) st.append(env.compiling()) ;
-D#"True if we are currently compiling."#
-
-: IM?!' (>)  ' dup meta@ m_IM@ if{ >IM! }el{ >IM!! }then ;
+py: cmpl@ (> flag) st.append(env.compiling()) ;
+D#"Fetch compiling flag. True if we are currently compiling."#
 
 #" Call whorth words "#
-py: call_s (s >) env.call(st.pop()) ;          D#"Call word named by s."#
-py: call (idx i >) env.call_idx(st.pop()) ;    D#"Call word with idx."#
+py: call_s   (s >)   env.call(st.pop()) ;      D#"Call word named by s."#
+py: call     (idx >) env.call_idx(st.pop()) ;  D#"Call word with idx."#
 py: call_fnc (fnc >) env.call_fnc(st.pop()) ;  D#"Call function."#
+
+: IM@ (idx > IMflag) meta@ m_IM@ ; D#"Fetch IM flag for word by idx"#
+: IM? (idx >)  dup IM@ if{ call }el{ IM! }then ; D#"See IM?'"#
+: IM?'    (>)  ' IM? ; IM
+D##"Run IM words and compile other words. This is what the compiler do and
+this word is for writing compilers rather then IM words."##
+
+: IM?! (idx >)  dup meta@ m_IM@ if{ IM! }el{ IM!! }then ; D#"See IM?!'"#
+: IM?!'    (>)  ' IM?! ; IM
+D##"Make the word being compiled compile the following word if it is not
+immediate (IM) and run it if it is. Effectively moving the compiling
+behaviour of following word to the word being compiled."##
+
+: .' (>) s'   cmpl@ if{ IM?!' lit>   >here
+                        "f" inpstptxt if{ IM?!' sfrmt }then   IM?!' .
+                   }el{ . }then ; IM
+D#"Convenient printing of strings ie: ."Hello World""#
 
 py> interp (>) whr.Whorth.interp
 #"py> compl (>) compl"#
@@ -513,8 +554,8 @@ out. Here is an simplified example of a Forth word (.") defined in Whorth:
             : .' (>) s' . ;
 
 ":" is the compiler, ".'" is the word being defined, "(>)" is the stack
-signature, "s'" fetch the next word from input put it on the stack as a
-string, "." print it and ";" end the compile and store the new word to
+signature, "s'" fetch the next word from input and put it on the stack as
+a string, "." print it and ";" end the compile and store the new word to
 the dictionary. How do .' become ."? see next page.
 
 Welcome back to the prompt and use an empty line to continue...">>
@@ -523,7 +564,7 @@ Welcome back to the prompt and use an empty line to continue...">>
 : help5 (>) <<"
 Ex:   ."Hello World"   .' for_one_word   .<|"fancy"|>
 
-In Forth You would need a space after '."' but Whorth don't need that
+In FORTH You would need a space after '."' but WHORTH don't need that
 (making hello world one char shorter). Whorth turn "text" into string, and
 if there is a prefix (like ."str") the prefix is called with ' added. That's
 how we used .' to define ." above. The last fancy example uses decorators,
@@ -533,15 +574,32 @@ The prefix is then called with "#'" added. The prefix "D#'" is defined and
 add documentation to the latest word. Use it like below and the
 documentation will turn up when using help'.
 
-   : .' (>)  word w@ . ; D#"Print a string but no compiling."#
+   : .' (>)  s' . ; D#"Print a string but no compiling."#
 
-Yes, Forth's ." also compiles so its usable in words. "hello" . works when
-compiling Whorth words so ." is not so needed and don't exist yet.
+Yes, the real .' also compiles so its usable in words...
 
 Welcome back to the prompt and use an empty line to continue...">>
 "help6" look func@ mty! . ;
 
 : help6 (>) <<"
+Immediate words are word that run during compile rather then being compiled.
+This make it possible to add things to the language itself, this is how if
+statements and loops are written and this is how we have to make a .' that
+works during compile. This is the one defined in lib.interp:
+
+: .' (>) s'   cmpl@ if{ IM?!' lit>   >here   IM?!' . }el{ . }then ; IM
+
+The IM at the end is what flag the word as immediate. Sometimes You do want
+to compile immidiate words "IM!' imword" will compile imword whether it is
+immediate or not. IM!!' will make the word we writing compile the following
+word into the word that are compiling when the word we writing are executed.
+That is useful when writing immediate word. IM?!' is even more useful as it
+make the right thing whether the word we want to compile are immediate or
+not. More to be written about this, don't worry if You don't get it all - it
+is far to short!">>
+"help7" look func@ mty! . ;
+
+: help7 (>) <<"
 Whorth is far from complete and a moving target. It use python as its
 assembler but the long plan is to also support wasm, js and possible more.
 Error messages are horrible and more for debugging Whorth then Whorth code
@@ -759,7 +817,7 @@ py: sh.r (x x > s) m=st.pop();st.append(whr.shdotr(st.pop(),m)) ;
 whrp_comp_extra = r"""
 imp' comp
 
-py: scips (s >) env.scip(st.pop()) ;
+py: skips (s >) env.skip(st.pop()) ;
 py: scans (s >) env.scan(st.pop()) ;
 py: find (s > i) st[0]=env.find(st[0]) ;
 
@@ -832,82 +890,127 @@ is false."##
 """
 
 whrp_if = r"""
-#" ? if{ ? }if{ - }br{ -- }el{ ? }if{ -- }el{ - }fin{ - }then - statement"#
-imp' stack      imp' recur      imp' list
+imp' recur      imp' list      imp' pst
 
-: _ljmp! (l > l)   dup len !?RET   dup l> jmphere  TRECUR ;
-D#"Consume list of addr and store relative addr to here in them."#
-
-: ljmp! (l >)   _ljmp!   drop ; D#"Store addrs with _ljmp! and drop list."#
-
-: here>l (l >)   here swap >l ; D#"Push here to list and drop it"#
-
-: "if{" (b >) lit> !?jmp >here   List >sst   List >sst
-              here sst0> >l   1 >here ; IM
-D##"Words impl 'if{ - }el{ - }then' statement. 'if{' and '}el{' (else) can be
+: help-if (>) <<"
+Words impl 'if{ - }el{ - }then' statement. 'if{' and '}el{' (else) can be
 followed by '}if{' (and if) creating a shortcut test without nesting 'if{'.
 An '}if{' can be followed by a '}br{' (break) turning it in to an abort if
 with cleanup before joining '}el{'. An '}if{' following an '}el{' is
 effectively an elif. }fin{ (finalize) collect all previews 'successful'
 tests for a common exit code. The whole if statement is ended with '}then'.
 
-Implemented by storing state in two list on sst, the top one jump locations
-for }el{ and the second one jump locations for '}fin{'. '}br{' also use the
-top one. '}then' sets all remaining jump locations."##
+Example: 'flag' if{'expensive test'}if{'cleanup'}br{'do stuff on success ...'
+         }el{'Get here both if first if fail or after cleanup, ie all but
+              success.'
+         }then 'continue merged control flow after if statement.'
+">> . ;
 
-: "}el{" (>) lit> jmp >here   sst1> here>l   1 >here   sst0> ljmp! ; IM
-D#"Collect control flow from failed 'if{ / }if{' and '}br{' (see 'if{')."#
+##"Implemented by storing state in two list on pst, the top one jump
+locations for }el{ and the second one jump locations for '}fin{'. '}br{'
+also use the top one. '}then' sets all remaining jump locations and
+drop state."##
 
-: "}then" (>) sst> ljmp!    sst> ljmp! ; IM
-D#"Collect all remaining control flow and end if statement (drop state)."#
+: _ljmp! (l > l)   dup len !?RET   dup l> jmphere  TRECUR ;
+D#"Consume list of addr and store relative addr to here in them."#
 
-: "}if{" (b >) lit> !?jmp >here   sst0> here>l   1 >here ; IM
+: ljmp! (l >)   _ljmp!   drop ; D#"Store addrs with _ljmp! and drop list."#
+
+: "if{" (b >) IM!!' !?jmp   mkpstl   List >pstl   List >pstl
+              here pstl0> >l   1 >here ; IM
+D#"Starting a 'if{ - }el{ - }then' statement. see: help-if"#
+
+: "}el{" (>) IM!!' jmp   here pstl1> >l   1 >here   pstl0> ljmp! ; IM
+D#"Collect control flow from failed 'if{ / }if{' and '}br{'. see help-if"#
+
+: "}then" (>) pstl> ljmp!    pstl> ljmp! ; IM
+D#"Collect all remaining control flow and end if statement. see help-if"#
+
+: "}if{" (b >) IM!!' !?jmp   here pstl0> >l   1 >here ; IM
 D##"Extra conditions on each 'if{' / '}el{' leg. Each 'if{' / '}el{' can
-have several '}if{' with or without '}br{'."##
+have several '}if{' with or without '}br{'. see: help-if"##
 
-: "}br{" (>) lit> jmp >here  sst0>  dup l> jmphere  here>l  1 >here ; IM
-D#"Turn an '}if{' into 'abort if' (see 'if{')."#
+: "}br{" (>) IM!!' jmp   1 >here   pstl0> l> jmphere   here 1- pstl0> >l ; IM
+D#"Turn an '}if{' into 'abort if'. see: help-if"#
 
-: "}fin{" (>) lit> jmp >here   sst0> here>l   1 >here   sst1> ljmp! ; IM
+: "}fin{" (>) IM!!' jmp   here pstl0> >l   1 >here   pstl1> ljmp! ; IM
 D##"'finalize': collect control flow from succeeding if{ / }el{ }if{ for
-common exit code. "##
+common exit code. see: help-if"##
 """
 whrp_IF = r"""
-##" Forth style IF -- ELSE -- THEN - statement and whorth simpl iter"##
 imp' stack      imp' jmp
 
-: IF (b >) lit> !?jmp >here  here >sst  1 >here ; IM
-D#"Words impl forth style IF - ELSE - THEN statement."#
+: help-IF (>) <<"
+Forth style IF -- ELSE -- THEN - statement. The WHORTH selection that don't
+relay on trains or fancy types like List. Mainly for defining low level words
+before train and fancy types are available (see: "help-if"). The words are:
+
+ flag IF     Start IF statement. Run following code block if flag true.
+      ELSE   End IF block and start a block run if IF is false (optional).
+      THEN   End if statement. Merge control flow.
+">> . ;
+
+: IF (flag >) lit> !?jmp >here  here >sst  1 >here ; IM
+D#"Start IF statement. Continue if flag true. see: help-IF"#
 
 : ELSE (>) lit> jmp >here   here  1 >here  sst> jmphere  >sst ; IM
-D#"Words impl forth style IF - ELSE - THEN statement."#
+D#"jump to THEN and make IF jump to following code block. see: help-IF"#
 
 : THEN (>) sst> jmphere ; IM
-D#"Words impl forth style IF - ELSE - THEN statement."#
+D#"End IF statement. Merge control flow. see: help-IF"#
+"""
 
-#"Odd naming below to not interfer white atempt to do std forth stuff."#
+whrp_ITER = r"""
+imp' IF
 
-: ITER (>) 0 >sst   0 >sst   here >sst ; IM
-D##"ITER .. [flag WHL] .. [flag WHL] .. RPT .. [[ELSE] .. THEN] statement.
+: help-ITER (>) <<"
+ITER is WHORTH looping structure that don't relay on trains or fancy types
+like List. Mainly for defining low level words before train and fancy types
+are available. The words are:
 
-ITER (iterate) .. RPT (repeat) is an endless loop. Optional WHL (while)
-break the loop if flag is false. Optional second WHL do the same but
-jump to ELSE/THEN instead of to RPT. That way You can have different
-exit code depending on witch while breaking. If You have two WHL You
-MUST have a THEN and may have a ELSE. If You don't have two WHL You
-MUST NOT have ELSE or THEN!"##
+      ITER     Iterate. ITER or FOR start a loop.
+      FOR      Iterate with a increment head not run first turn.
+      DO       Start body - join first and repeating flow in an FOR loop.
+ flag WHILE    Continue while true. jump to after REPEAT if flag is false.
+ flag UNTIL    Continue until true. jump to after REPEAT if flag is true.
+      LOOP     Loop back to ITER / FOR (use as many You like).
+ flag ?LOOP    Take a flag and loop back if true (use as many You like).
+      REPEAT   End a loop, loop back to ITER / FOR
+ flag ?REPEAT  End a loop, take a flag and loop back if true.
 
-: WHL (flag >) lit> !?jmp >here
-               here  sst1> IF  >2sst  ELSE  >1sst  THEN  1 >here ; IM
-D##" Break the loop if flag false. You may have two WHL and then, and only
-then, You MUST have a THEN and may have an ELSE. First WHL break to RPT and
-second to ELSE or THEN."##
+ITER .body. REPEAT is an endless loop. You may add as many LOOP as You
+like and only one of WHILE or UNTIL.
 
-: RPT (>) lit> jmp >here   sst> jmpthere
-          sst> dup  IF  jmphere  ELSE  drop  THEN
-          sst> dup  IF  >sst  ELSE  drop  THEN ; IM
-D##"Loop by jumping back to ITER. End an ITER statement unless it have two
-WHL in witch case, and only in that case, You need an THEN."##
+FOR .head. DO .body. REPEAT is a variant where head is skipped on the first
+turn (mainly for increment code). You may add as many LOOP as You like to
+both head and body and only one of WHILE or UNTIL to head or body.
+">> . ;
+
+: ITER (>) 0 >sst   here >sst ; IM
+D#"Start a iteration (loop), see: help-ITER"#
+
+: FOR (>) lit> jmp >here   1 >here   0 >sst   here >sst ; IM
+D#"Start a iteration (loop) with a head, see: help-ITER"#
+: DO (>) sst0> 1- jmphere ; IM
+D#"End head and start body in a FOR iteration (loop). see: help-ITER"#
+
+: UNTIL   (flag >)  lit>   ?jmp >here   here >1sst   1 >here ; IM
+D#"Break if flag true. MAX one UNTIL or WHILE - see: help-ITER"#
+
+: WHILE  (flag >)   lit>   !?jmp >here  here >1sst   1 >here ; IM
+D#"Break if flag false. MAX one UNTIL or WHILE - see: help-ITER"#
+
+: LOOP        ( >)  lit>   jmp >here   sst0> jmpthere ; IM
+D#"Loop back to start of iteration (ITER / FOR). see: help-ITER"#
+: ?LOOP   (flag >)  lit>  ?jmp >here   sst0> jmpthere ; IM
+D#"Loop back to start of iteration if flag true (ITER / FOR). see: help-ITER"#
+
+: REPEAT        (>) lit> jmp >here     sst> jmpthere
+             sst> dup  IF  jmphere  ELSE  drop  THEN ; IM
+D#"End a iteration (loop). Loop back to ITER / FOR. see: help-ITER"#
+: ?REPEAT  (flag >) lit> ?jmp >here    sst> jmpthere
+             sst> dup  IF  jmphere  ELSE  drop  THEN ; IM
+D#"End a iteration. Loop if flag true. see: help-ITER"#
 """
 # : qq ITER dup 10 < WHL dup 1+ dup 9 < WHL dup 3 + RPT 42 ELSE 666 THEN 9 ;
 
@@ -1118,7 +1221,7 @@ def _wstartcomp(env, flag=0):
 	env.c_w = env.w
 	env.c_flag = flag # | __IW
 	env.c_txt = env.ib[txt:env.ip]
-	env.scip()
+	env.skip()
 	if env.ib[env.ip] != '(':
 		env.c_sig = ''
 	else:
@@ -1134,7 +1237,7 @@ def _pycolon(env, st):
 	"""Compile a python word. It ends with ';'"""
 	env.po = 'py: '
 	_wstartcomp(env)
-	env.scip()
+	env.skip()
 	stxt = len(env.c_txt)
 	etxt = stxt
 	env.word()
