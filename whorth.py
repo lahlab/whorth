@@ -299,8 +299,10 @@ class Whorth(slt.SlotsBase):
 		D('lit>', '> x', 'env.r[-1]+=1; st.append(env.w_mem[env.r[-1]])')
 		d("Push val at exec pointer (xp) to the stack and advance xp.")
 		D('sfrmt', 's > s', Whorth.sfrmt); d(Whorth.sfrmt)
-		D('.',  'x >',   'print(whr_s(st.pop()))')
-		d('Print (and consume) top value on stack.')
+		D('.',  'x >',   'print(whr_s(st.pop()), end=" ")')
+		d('Print (and consume) top value on stack with trailing space.')
+		D('_.',  'x >',   'print(whr_s(st.pop()), end="")')
+		d('Print (and consume) top value on stack with no trailing space.')
 		D('s.', '>', Whorth.sdot); d(Whorth.sdot)
 		D('lsw', '>',     'env.lsw()')
 		d('List all loaded words')
@@ -874,7 +876,7 @@ path go all the way to an import the source of it is displayed.""")
 			prompt = self.po
 		else:
 			if len(st) > pn:
-				prompt = str(len(st)) + ':<'
+				prompt = '<' + str(len(st)) + ':'
 			else:
 				prompt = '<'
 			if st and pn:

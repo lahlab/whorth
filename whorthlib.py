@@ -163,7 +163,7 @@ def whrp_basic(env):
 		'print(" ".join(whr.whr_s(x) for x in env.sst))')
 	D('m.',      '>',
 		'print(" ".join(whr.whr_rs(x) for x in env.w_mem))')
-	D('sh.', 'x x >', 'm=st.pop()\nprint(whr.shdots(st.pop(),m))')
+	D('sh.', 'x x >', 'm=st.pop()\nprint(whr.shdots(st.pop(),m), end=" ")')
 
 #wod_comp = #D: D""""Whorth interpreter and compiler words."""
 whrp_comp = r"""
@@ -402,8 +402,8 @@ immediate (IM) and run it if it is. Effectively moving the compiling
 behaviour of following word to the word being compiled."##
 
 : .' (>) s'   cmpl@ if{ IM?!' lit>   >here
-                        "f" inpstptxt if{ IM?!' sfrmt }then   IM?!' .
-                   }el{ . }then ; IM
+                        "f" inpstptxt if{ IM?!' sfrmt }then   IM?!' _.
+                   }el{ _. }then ; IM
 D#"Convenient printing of strings ie: ."Hello World""#
 
 py> interp (>) whr.Whorth.interp
