@@ -198,7 +198,10 @@ D#"pop from current compile position as a stack."#
 py: Nil (> nil) st.append(None) ; D#"Put Nil (Whorths None) on stack."#
 py: isNil (x > b) st.append(st.pop() is None) ; D#"Test if Nil."#
 
-py: callword (>) env.call(enw.w) ;      D#"Call word in wordbuf"#
+py: callword (>) env.call(enw.w) ;            D#"Call word in wordbuf"#
+py: call_s   (s >)   env.call(st.pop()) ;     D#"Call word named by s."#
+py: call     (idx >) env.call_idx(st.pop()) ; D#"Call word with idx."#
+py: call_fnc (fnc >) env.call_fnc(st.pop()) ; D#"Call function."#
 ###"
 py: compword (>) _compw(env, env.w) ;   D#"Compile word in wordbuf"#
 "###
@@ -214,6 +217,9 @@ py: c_mp@ (> i) st.append(env.c_mp) ;
 D#"Fetch memory position of word currently being compiled."#
 py: c_mp! (i >) env.c_mp = st.pop() ;
 D#"Store i as memory position of word currently being compiled."#
+py: ERR (s >) er=st.pop(); env.e(er); raise(SyntaxError(er)) ;
+D#"Raise error with str as msg."#
+py: errstr (s >) er=st.pop(); env.e(er) ;  D#"Add s to errlog."#
 
 #" Look up word information "#
 py: look (s > idx) st.append(env.dic[st.pop()]) ;
@@ -222,7 +228,6 @@ py: func@ (idx > i) st.append(env.dicl[st.pop()]) ;
  D#"Fetch function from word idx."#
 py: meta@ (idx > m) st.append(env.dicd[st.pop()]) ;
  D#"Fetch meta info from word idx."#
-
 : s' (> s) word w@ ; D#"(s-tick) Get next word as string."#
 : ' (> idx) s' look ;
 D#"(tick) Look up index (exec token) of following word."#
@@ -232,16 +237,18 @@ D#"(tick) Look up index (exec token) of following word."#
 : IM!   (idx >)  func@ >here ;  D#"Compile word by idx."#
 #": fIM!  (f >)    >here ;  D#"Compile func f."#
 
-: IM!!  (idx >)  lit> lit> >here   func@ >here   lit> >here >here ;
+: lit' (>)  lit> lit> >here ' IM! ;
+
+: IM!!  (idx >)  lit"lit>" >here   func@ >here   lit">here" >here ;
 D#"Make word being compiled compile word by idx."#
-#": fIM!! (f >)    lit> lit> >here   >here   lit> >here >here ;
+#": fIM!! (f >)    lit"lit>" >here   >here   lit">here" >here ;
 D#"Make word being compiled compile func f."#
 
-: IM!'  (>)  ' IM!  ;  IM  D#"Compile next word regardless of IM"#
-: IM!!' (>)  ' IM!! ;  IM
-#" : IM!!' (>) lit> lit> >here   f' >here   lit> >here >here ; IM "#
+: IM!'  (>)  ' IM!  ;  D#"Compile next word regardless of IM"#
+: IM!!' (>)  ' IM!! ;
+#" : IM!!' (>) lit"lit>" >here   f' >here   lit>">here" >here ; "#
 D#"Make the word being compiled compile next word regardless of IM"#
-: IM' (>) word callword ; IM  D#"Call next word immediately"#
+: IM' (>) word callword ; D#"Call next word immediately"#
 #" More IM* words in lib.intrp "#
 """
 # #S: #py: #D: #:
@@ -253,7 +260,7 @@ py: _box (> a) st.append(env.r[-1]+1); env.r[-1] = 0 ; D#"Implement box'"#
 py: _const (> a) st.append(env.w_mem[env.r[-1]+1]); env.r[-1] = 0 ;
 D#"Implement const'"#
 
-: ebox' (>) word mkword IM!!' _box ;
+: ebox' (>) word mkword IM!!"_box" ;
 D##"Empty box. Make a named storage place, a word returning its address
 when called for storing values. Do not reserve space - se allot and >here
 for ways to reserve and set memory. Or use box' for single value."##
@@ -263,7 +270,7 @@ D##"Make a named storage place, a word returning its address when called
 for storing values. Initiate to the value on the stack reserving space
 for that value."##
 
-: const' (c >) word mkword IM!!' _const >here ;
+: const' (c >) word mkword IM!!"_const" >here ;
 D##"Make a named constant, a word returning its value when called. Set
 it's value from the top value on stack."##
 
@@ -384,26 +391,21 @@ imp' comp      imp' meta      imp' if
 py: cmpl@ (> flag) st.append(env.compiling()) ;
 D#"Fetch compiling flag. True if we are currently compiling."#
 
-#" Call whorth words "#
-py: call_s   (s >)   env.call(st.pop()) ;      D#"Call word named by s."#
-py: call     (idx >) env.call_idx(st.pop()) ;  D#"Call word with idx."#
-py: call_fnc (fnc >) env.call_fnc(st.pop()) ;  D#"Call function."#
-
 : IM@ (idx > IMflag) meta@ m_IM@ ; D#"Fetch IM flag for word by idx"#
 : IM? (idx >)  dup IM@ if{ call }el{ IM! }then ; D#"See IM?'"#
-: IM?'    (>)  ' IM? ; IM
+: IM?'    (>)  ' IM? ;
 D##"Run IM words and compile other words. This is what the compiler do and
 this word is for writing compilers rather then IM words."##
 
 : IM?! (idx >)  dup meta@ m_IM@ if{ IM! }el{ IM!! }then ; D#"See IM?!'"#
-: IM?!'    (>)  ' IM?! ; IM
+: IM?!'    (>)  ' IM?! ;
 D##"Make the word being compiled compile the following word if it is not
 immediate (IM) and run it if it is. Effectively moving the compiling
 behaviour of following word to the word being compiled."##
 
-: .' (>) s'   cmpl@ if{ IM?!' lit>   >here
-                        "f" inpstptxt if{ IM?!' sfrmt }then   IM?!' _.
-                   }el{ _. }then ; IM
+: .' (>) s'   cmpl@ if{ IM?!"lit>"   >here
+                        "f" inpstptxt if{ IM?!"sfrmt" }then   IM?!"_."
+                   }el{ _. }then ;
 D#"Convenient printing of strings ie: ."Hello World""#
 
 py> interp (>) whr.Whorth.interp
@@ -590,10 +592,10 @@ works during compile. This is the one defined in lib.interp:
 : .' (>) s'   cmpl@ if{ IM?!' lit>   >here   IM?!' . }el{ . }then ; IM
 
 The IM at the end is what flag the word as immediate. Sometimes You do want
-to compile immidiate words "IM!' imword" will compile imword whether it is
-immediate or not. IM!!' will make the word we writing compile the following
+to compile immidiate words IM!"imword" will compile imword whether it is
+immediate or not. IM!!"word" will make the word we writing compile the following
 word into the word that are compiling when the word we writing are executed.
-That is useful when writing immediate word. IM?!' is even more useful as it
+That is useful when writing immediate word. IM?!"word" is even more useful as it
 make the right thing whether the word we want to compile are immediate or
 not. More to be written about this, don't worry if You don't get it all - it
 is far to short!">>
@@ -872,11 +874,11 @@ You need special words to do recursion."##
 imp' jmp
 
 : RECUR (>) c_mp@ >here ; IM   D#"Recursion, Call the word being defined."#
-: ?RECUR (b >) lit> ?LCALL >here IM!' RECUR ; IM
-: ?RECUR (b >) lit> ?LCALL >here IM!' RECUR ; IM
+: ?RECUR (b >) lit"?LCALL" >here IM!"RECUR" ; IM
+: ?RECUR (b >) lit"?LCALL" >here IM!"RECUR" ; IM
 D#"Conditional recursion, Call the word being defined if b is true."#
-: !?RECUR (b >) lit> !?LCALL >here IM!' RECUR ; IM
-: !?RECUR (b >) lit> !?LCALL >here IM!' RECUR ; IM
+: !?RECUR (b >) lit"!?LCALL" >here IM!"RECUR" ; IM
+: !?RECUR (b >) lit"!?LCALL" >here IM!"RECUR" ; IM
 D#"Conditional recursion, Call the word being defined if b is false."#
 
 : TRECUR (>) lit> jmp >here c_mp@ mlen - >here ; IM
@@ -916,26 +918,30 @@ D#"Consume list of addr and store relative addr to here in them."#
 
 : ljmp! (l >)   _ljmp!   drop ; D#"Store addrs with _ljmp! and drop list."#
 
-: "if{" (b >) IM!!' !?jmp   mkpstl   List >pstl   List >pstl
-              here pstl0> >l   1 >here ; IM
-D#"Starting a 'if{ - }el{ - }then' statement. see: help-if"#
-
-: "}el{" (>) IM!!' jmp   here pstl1> >l   1 >here   pstl0> ljmp! ; IM
-D#"Collect control flow from failed 'if{ / }if{' and '}br{'. see help-if"#
-
 : "}then" (>) pstl> ljmp!    pstl> ljmp! ; IM
 D#"Collect all remaining control flow and end if statement. see help-if"#
 
-: "}if{" (b >) IM!!' !?jmp   here pstl0> >l   1 >here ; IM
+: "if{" (b >) IM!!"!?jmp"   mkpstl   List >pstl   List >pstl
+              here pstl0> >l   1 >here  lit"}then" pstfnc! ; IM
+D#"Starting a 'if{ - }el{ - }then' statement. see: help-if"#
+
+: "}el{" (>) IM!!"jmp"   here pstl1> >l   1 >here   pstl0> ljmp! ; IM
+D#"Collect control flow from failed 'if{ / }if{' and '}br{'. see help-if"#
+
+: "}if{" (b >) IM!!"!?jmp"   here pstl0> >l   1 >here ; IM
 D##"Extra conditions on each 'if{' / '}el{' leg. Each 'if{' / '}el{' can
 have several '}if{' with or without '}br{'. see: help-if"##
 
-: "}br{" (>) IM!!' jmp   1 >here   pstl0> l> jmphere   here 1- pstl0> >l ; IM
+: "}br{" (>) IM!!"jmp"   1 >here   pstl0> l> jmphere   here 1- pstl0> >l ; IM
 D#"Turn an '}if{' into 'abort if'. see: help-if"#
 
-: "}fin{" (>) IM!!' jmp   here pstl0> >l   1 >here   pstl1> ljmp! ; IM
+: "}fin{" (>) IM!!"jmp"   here pstl0> >l   1 >here   pstl1> ljmp! ; IM
 D##"'finalize': collect control flow from succeeding if{ / }el{ }if{ for
 common exit code. see: help-if"##
+
+: "}" (>) pstfnc@ dup if{ call_fnc
+          }el{ drop "} without set pstfnc" ERR }then ; IM
+D#"End a { ... } train with word set in pstfnc"#
 """
 whrp_IF = r"""
 imp' stack      imp' jmp

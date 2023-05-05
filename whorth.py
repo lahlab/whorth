@@ -944,6 +944,10 @@ path go all the way to an import the source of it is displayed.""")
 		"""return true if compiling"""
 		return self.c_w and not (self.pst and (self.pst[-1].flag & C_W))
 
+	def strtrain(self):
+		"""return true if strtrain"""
+		return self.pst and (self.pst[-1].es[0] == '"')
+
 	def interp(env, st=None):
 		"""Text interpreter - aka outer interpreter (also do compile)."""
 		if st is None:
@@ -963,10 +967,11 @@ path go all the way to an import the source of it is displayed.""")
 					mem.append(lit)
 					mem.append(st.pop())
 					#print(env.pst)
-					if env.pst and ('f' in env.pst[-1].ptxt):
+					if env.pst and env.pst[-1].ptxt and ('f' in env.pst[-1].ptxt):
 						mem.append(sfrmt)
 			else:
-				if env.compiling() and (not (dd[n].flag & Wmeta.IM)):
+				if env.compiling() and (not (dd[n].flag & Wmeta.IM)) and (
+						not env.strtrain()):
 					mem.append(dl[n])
 				else:
 					env.call_fnc(dl[n])
